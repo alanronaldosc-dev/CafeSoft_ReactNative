@@ -1,8 +1,10 @@
-// CartScreen.js
-// Catálogo de productos + carrito de compras.
-// Usa useCart() para leer y modificar el carrito desde el Context,
-// igual que session('cart') en Laravel pero reactivo.
-
+/**
+ * CartScreen.js
+ * Pantalla de catálogo y carrito de compras para CafeSoft.
+ * - Permite buscar productos, filtrar por categoría y agregar artículos al carrito.
+ * - Muestra una vista alterna del carrito con cantidades, subtotal e impuestos.
+ * - Usa useCart() desde el contexto para manejar el estado del carrito.
+ */
 import React, { useState } from 'react';
 import {
   View,

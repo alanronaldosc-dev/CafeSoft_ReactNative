@@ -1,7 +1,10 @@
-// HomeScreen.js
-// Pantalla principal de bienvenida. Muestra info relevante de CafeSoft:
-// saludo al usuario, estadísticas, productos destacados y novedades.
-
+/**
+ * HomeScreen.js
+ * Pantalla principal de la app que muestra información de bienvenida.
+ * - Presenta saludos, métricas rápidas, productos destacados y novedades.
+ * - Utiliza contexto de carrito para mostrar la cantidad de artículos.
+ * - Incluye botones para agregar productos al carrito con addToCart().
+ */
 import React from 'react';
 import {
   View,

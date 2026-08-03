@@ -1,6 +1,12 @@
-// RegisterScreen.js
-// Equivalente a: AuthController@showRegisterForm + resources/views/auth/register.blade.php
-
+/**
+ * RegisterScreen.js
+ * Pantalla de registro de nuevos usuarios para CafeSoft.
+ * - Permite ingresar nombre, correo, teléfono y contraseña.
+ * - Incluye confirmación de contraseña y aceptación de términos.
+ * - Usa estado local con useState y navega al login cuando se completa.
+ *
+ * @param {object} navigation Navegación de React Navigation.
+ */
 import React, { useState } from 'react';
 import {
   View,

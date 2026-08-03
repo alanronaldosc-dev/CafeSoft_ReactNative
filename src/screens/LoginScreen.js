@@ -1,7 +1,13 @@
-// LoginScreen.js
-// Equivalente a: AuthController@showLoginForm + resources/views/auth/login.blade.php
-// Todo junto en un solo archivo, así funciona React Native.
-
+/**
+ * LoginScreen.js
+ * Pantalla de inicio de sesión para CafeSoft.
+ * - Muestra los campos de email, contraseña y selección de rol.
+ * - Gestiona la visibilidad de la contraseña y un dropdown de roles.
+ * - Usa estado local con useState para mantener los valores del formulario.
+ * - Al pulsar Iniciar Sesión navega a la pantalla principal (mock).
+ *
+ * @param {object} navigation Navegación de React Navigation.
+ */
 import React, { useState } from 'react';
 import {
   View,

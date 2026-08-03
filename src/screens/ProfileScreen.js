@@ -1,7 +1,12 @@
-// ProfileScreen.js
-// Pantalla de perfil del usuario activo.
-// Muestra info del usuario, opciones de configuración y accesibilidad.
-
+/**
+ * ProfileScreen.js
+ * Pantalla de perfil del usuario con información y ajustes personales.
+ * - Presenta resumen de pedidos, puntos y reseñas del usuario.
+ * - Incluye opciones de menú, una sección de accesibilidad y logout.
+ * - Usa useState para manejar las opciones de alto contraste y tamaño de texto.
+ *
+ * @param {object} navigation Navegación de React Navigation.
+ */
 import React, { useState } from 'react';
 import {
   View,

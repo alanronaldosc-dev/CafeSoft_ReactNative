@@ -7,35 +7,35 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text } from 'react-native';
 
-// Importamos cada pantalla, como cuando importás un Controller en las rutas
+// Importamos cada pantalla
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import CartScreen from '../screens/CartScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import ReportsScreen from '../screens/ReportsScreen'; // <-- Agregada
+import DashboardScreen from '../screens/DashboardScreen'; // Añade al inicio
+import UserManagementScreen from '../screens/UserManagementScreen';
+import SystemConfigScreen from '../screens/SystemConfigScreen';
+
+
 
 import colors from '../theme/colors';
 
-// Stack = navegación lineal (pantalla sobre pantalla, con botón "atrás")
-// Es como el historial del navegador web
 const Stack = createNativeStackNavigator();
-
-// Tab = el menú de íconos de abajo (Inicio, Carrito, Perfil)
 const Tab = createBottomTabNavigator();
 
-// Esta función define las 3 tabs del menú inferior
-// Solo se muestra cuando el usuario ya está autenticado
+// Menú inferior (solo cuando el usuario está autenticado)
 function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: colors.secondary,   // color del ícono activo
-        tabBarInactiveTintColor: colors.textSecondary, // color inactivo
+        tabBarActiveTintColor: colors.secondary,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: { backgroundColor: colors.white },
-        headerShown: false, // ocultamos el header por defecto
+        headerShown: false,
       }}
     >
-      {/* Cada Tab.Screen es como una ruta de Laravel */}
       <Tab.Screen
         name="Home"
         component={HomeScreen}
@@ -64,20 +64,27 @@ function MainTabs() {
   );
 }
 
-// El navegador principal que envuelve toda la app
-// initialRouteName define la primera pantalla, como la ruta "/" en Laravel
+// Navegador principal
 export default function AppNavigator() {
   return (
-    // NavigationContainer es el contenedor raíz, siempre va aquí
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
-        {/* Pantallas públicas (sin auth) */}
+        {/* Pantallas públicas */}
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        <Stack.Screen name="UserManagement" component={UserManagementScreen} />
+        <Stack.Screen name="SystemConfig" component={SystemConfigScreen} />
 
-        {/* Pantalla principal con las tabs (requiere auth) */}
+
+        {/* Pantalla principal con tabs */}
         <Stack.Screen name="Main" component={MainTabs} />
+
+        {/* Pantalla de reportes (se accede desde el perfil) */}
+        <Stack.Screen name="Reports" component={ReportsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
+
+
   );
 }
