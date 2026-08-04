@@ -1,82 +1,228 @@
-/**
- * CartScreen.js
- * Pantalla de catálogo y carrito de compras para CafeSoft.
- * - Permite buscar productos, filtrar por categoría y agregar artículos al carrito.
- * - Muestra una vista alterna del carrito con cantidades, subtotal e impuestos.
- * - Usa useCart() desde el contexto para manejar el estado del carrito.
- */
-import React, { useState } from 'react';
+// CartScreen.js
+// Flujo completo de venta:
+// 1. Catálogo de productos (desde la API)
+// 2. Carrito con método de pago (efectivo/tarjeta)
+// 3. Ticket de confirmación
+
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  FlatList,
-  ScrollView,
-  Image,
+  View, Text, TextInput, TouchableOpacity,
+  StyleSheet, FlatList, ScrollView, Image,
+  ActivityIndicator, Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import colors from '../theme/colors';
 import { useCart } from '../context/CartContext';
+import ProductoService from '../services/ProductoService';
 
-const CATEGORIES = ['Todos', 'Café Caliente', 'Cold Brew', 'Repostería'];
-
-const PRODUCTS = [
-  { id: '1', name: 'Espresso Clásico', price: 45, rating: 4.9, category: 'Café Caliente', image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?w=300' },
-  { id: '2', name: 'Cappuccino Artesanal', price: 65, rating: 4.7, category: 'Café Caliente', image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=300' },
-  { id: '3', name: 'Cold Brew 24h', price: 75, rating: 4.8, category: 'Cold Brew', image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=300' },
-  { id: '4', name: 'Nitro Cold Brew', price: 85, rating: 4.6, category: 'Cold Brew', image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=300' },
-  { id: '5', name: 'Croissant', price: 40, rating: 4.5, category: 'Repostería', image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=300' },
-  { id: '6', name: 'Muffin de Arándanos', price: 50, rating: 4.4, category: 'Repostería', image: 'https://images.unsplash.com/photo-1607958996333-41aef7caefaa?w=300' },
-];
-
-// Impuesto del 16% (IVA México)
 const IVA = 0.16;
+// ID de usuario fijo por ahora (cuando se integre auth, vendrá del contexto de sesión)
+const USUARIO_ID = 1;
+
+const BASE_URL = 'http://192.168.101.116:8080/api';
 
 export default function CartScreen() {
-  const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState('Todos');
-  const [showCart, setShowCart] = useState(false);
-
-  // Traemos todo lo necesario del Context
   const { cartItems, addToCart, removeFromCart, deleteFromCart, totalItems, totalPrice } = useCart();
 
-  const filteredProducts = PRODUCTS.filter(p => {
-    const matchCategory = activeCategory === 'Todos' || p.category === activeCategory;
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
-    return matchCategory && matchSearch;
-  });
+  // Vista activa: 'catalog' | 'cart' | 'ticket'
+  const [view, setView] = useState('catalog');
 
-  const iva = totalPrice * IVA;
-  const total = totalPrice + iva;
+  // Productos de la API
+  const [productos, setProductos] = useState([]);
+  const [loadingProductos, setLoadingProductos] = useState(true);
+  const [errorProductos, setErrorProductos] = useState(null);
+  const [search, setSearch] = useState('');
 
-  // Tarjeta de cada producto del catálogo
-  const renderProduct = ({ item }) => (
-    <View style={styles.productCard}>
-      <View style={styles.imageContainer}>
-        <Image source={{ uri: item.image }} style={styles.productImage} />
-      </View>
-      <View style={styles.productInfo}>
-        <Text style={styles.productRating}>⭐ {item.rating}</Text>
-        <Text style={styles.productName}>{item.name}</Text>
-        <View style={styles.productFooter}>
-          <Text style={styles.productPrice}>${item.price} MXN</Text>
-          <TouchableOpacity style={styles.addButton} onPress={() => addToCart(item)}>
-            <Text style={styles.addButtonText}>+</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
+  // Pago
+  const [metodoPago, setMetodoPago] = useState('efectivo');
+  const [montoEfectivo, setMontoEfectivo] = useState('');
+  const [loadingVenta, setLoadingVenta] = useState(false);
+
+  // Ticket (respuesta de la API)
+  const [ticket, setTicket] = useState(null);
+
+  // Carga productos cada vez que entrás al tab
+  useFocusEffect(
+    useCallback(() => {
+      loadProductos();
+    }, [])
   );
 
-  // Vista del carrito con resumen
-  if (showCart) {
+  const loadProductos = async () => {
+    try {
+      setLoadingProductos(true);
+      setErrorProductos(null);
+      const data = await ProductoService.getAll();
+      setProductos(data);
+    } catch (e) {
+      setErrorProductos('No se pudo cargar el catálogo');
+    } finally {
+      setLoadingProductos(false);
+    }
+  };
+
+  const productosFiltrados = productos.filter(p =>
+    p.nombre.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // Cálculos del carrito
+  const subtotal = totalPrice;
+  const impuestos = subtotal * IVA;
+  const total = subtotal + impuestos;
+  const cambio = metodoPago === 'efectivo' && parseFloat(montoEfectivo) > 0
+    ? parseFloat(montoEfectivo) - total
+    : 0;
+
+  // Confirma la venta enviando a la API
+  const handleConfirmarVenta = async () => {
+    if (cartItems.length === 0) {
+      Alert.alert('Error', 'El carrito está vacío');
+      return;
+    }
+    if (metodoPago === 'efectivo') {
+      if (!montoEfectivo || parseFloat(montoEfectivo) <= 0) {
+        Alert.alert('Error', 'Ingresá el monto recibido en efectivo');
+        return;
+      }
+      if (parseFloat(montoEfectivo) < total) {
+        Alert.alert('Error', `El monto es insuficiente. Total: $${total.toFixed(2)} MXN`);
+        return;
+      }
+    }
+
+    const ventaData = {
+      metodoPago,
+      usuarioId: USUARIO_ID,
+      detalles: cartItems.map(item => ({
+        productoId: item.id,
+        cantidad: item.quantity,
+      })),
+      ...(metodoPago === 'efectivo' && {
+        montoEfectivo: parseFloat(montoEfectivo),
+        cambio: cambio,
+      }),
+    };
+
+    try {
+      setLoadingVenta(true);
+      const response = await fetch(`${BASE_URL}/ventas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(ventaData),
+      });
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(err || 'Error al procesar la venta');
+      }
+      const data = await response.json();
+      setTicket(data);
+      setView('ticket');
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setLoadingVenta(false);
+    }
+  };
+
+  // Limpia el carrito y vuelve al catálogo
+  const handleNuevaVenta = () => {
+    cartItems.forEach(item => deleteFromCart(item.id));
+    setMetodoPago('efectivo');
+    setMontoEfectivo('');
+    setTicket(null);
+    setView('catalog');
+  };
+
+  // ─── VISTA: TICKET ───────────────────────────────────────────────
+  if (view === 'ticket' && ticket) {
     return (
       <View style={styles.container}>
-        {/* Header del carrito */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => setShowCart(false)}>
-            <Text style={styles.backButton}>← Volver</Text>
+          <Text style={styles.headerTitle}>Ticket de Venta</Text>
+        </View>
+        <ScrollView contentContainerStyle={styles.scroll}>
+
+          {/* Encabezado del ticket */}
+          <View style={styles.ticketCard}>
+            <Text style={styles.ticketLogo}>☕ CafeSoft</Text>
+            <Text style={styles.ticketFolio}>Folio: {ticket.folio}</Text>
+            <Text style={styles.ticketFecha}>
+              {ticket.fecha ? new Date(ticket.fecha).toLocaleString('es-MX') : ''}
+            </Text>
+            <View style={styles.ticketDivider} />
+
+            {/* Detalle de productos */}
+            {ticket.detalles?.map((d, i) => (
+              <View key={i} style={styles.ticketRow}>
+                <Text style={styles.ticketItem}>
+                  {d.cantidad}x {d.productoNombre}
+                </Text>
+                <Text style={styles.ticketItemPrice}>
+                  ${(d.subtotal || 0).toFixed(2)}
+                </Text>
+              </View>
+            ))}
+
+            <View style={styles.ticketDivider} />
+
+            {/* Totales */}
+            <View style={styles.ticketRow}>
+              <Text style={styles.ticketLabel}>Subtotal</Text>
+              <Text style={styles.ticketValue}>${(ticket.subtotal || 0).toFixed(2)} MXN</Text>
+            </View>
+            <View style={styles.ticketRow}>
+              <Text style={styles.ticketLabel}>IVA (16%)</Text>
+              <Text style={styles.ticketValue}>${(ticket.impuestos || 0).toFixed(2)} MXN</Text>
+            </View>
+            <View style={[styles.ticketRow, styles.ticketTotalRow]}>
+              <Text style={styles.ticketTotalLabel}>TOTAL</Text>
+              <Text style={styles.ticketTotalValue}>${(ticket.total || 0).toFixed(2)} MXN</Text>
+            </View>
+
+            <View style={styles.ticketDivider} />
+
+            {/* Método de pago */}
+            <View style={styles.ticketRow}>
+              <Text style={styles.ticketLabel}>Método de pago</Text>
+              <Text style={styles.ticketValue}>
+                {ticket.metodoPago === 'efectivo' ? '💵 Efectivo' : '💳 Tarjeta'}
+              </Text>
+            </View>
+            {ticket.metodoPago === 'efectivo' && (
+              <>
+                <View style={styles.ticketRow}>
+                  <Text style={styles.ticketLabel}>Recibido</Text>
+                  <Text style={styles.ticketValue}>${(ticket.montoEfectivo || 0).toFixed(2)} MXN</Text>
+                </View>
+                <View style={styles.ticketRow}>
+                  <Text style={styles.ticketLabel}>Cambio</Text>
+                  <Text style={[styles.ticketValue, { color: colors.success }]}>
+                    ${(ticket.cambio || 0).toFixed(2)} MXN
+                  </Text>
+                </View>
+              </>
+            )}
+
+            <View style={styles.ticketDivider} />
+            <Text style={styles.ticketGracias}>¡Gracias por tu compra!</Text>
+          </View>
+
+          <TouchableOpacity style={styles.nuevaVentaButton} onPress={handleNuevaVenta}>
+            <Text style={styles.nuevaVentaButtonText}>Nueva Venta</Text>
+          </TouchableOpacity>
+
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // ─── VISTA: CARRITO + PAGO ────────────────────────────────────────
+  if (view === 'cart') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setView('catalog')}>
+            <Text style={styles.backButton}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Mi Pedido</Text>
           <View style={styles.cartIconContainer}>
@@ -84,24 +230,30 @@ export default function CartScreen() {
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={styles.cartScroll}>
+        <ScrollView contentContainerStyle={styles.scroll}>
           {cartItems.length === 0 ? (
-            <View style={styles.emptyCart}>
-              <Text style={styles.emptyCartEmoji}>🛒</Text>
-              <Text style={styles.emptyCartText}>Tu carrito está vacío</Text>
+            <View style={styles.centered}>
+              <Text style={styles.emptyEmoji}>🛒</Text>
+              <Text style={styles.emptyText}>Tu carrito está vacío</Text>
             </View>
           ) : (
             <>
-              {/* Lista de productos en el carrito */}
+              {/* Productos en el carrito */}
               {cartItems.map(item => (
                 <View key={item.id} style={styles.cartItem}>
-                  <View style={styles.cartItemImageContainer}>
-                    <Image source={{ uri: item.image }} style={styles.cartItemImage} />
-                  </View>
+                  {item.imagen ? (
+                    <Image
+                      source={{ uri: `data:image/jpeg;base64,${item.imagen}` }}
+                      style={styles.cartItemImage}
+                    />
+                  ) : (
+                    <View style={styles.cartItemImagePlaceholder}>
+                      <Text style={{ fontSize: 24 }}>☕</Text>
+                    </View>
+                  )}
                   <View style={styles.cartItemInfo}>
-                    <Text style={styles.cartItemName}>{item.name}</Text>
-                    <Text style={styles.cartItemPrice}>${item.price} MXN</Text>
-                    {/* Controles de cantidad: — cantidad + */}
+                    <Text style={styles.cartItemName}>{item.nombre}</Text>
+                    <Text style={styles.cartItemPrice}>${item.precio} MXN</Text>
                     <View style={styles.quantityRow}>
                       <TouchableOpacity
                         style={styles.quantityButton}
@@ -123,26 +275,22 @@ export default function CartScreen() {
                       <Text style={styles.deleteIcon}>🗑</Text>
                     </TouchableOpacity>
                     <Text style={styles.cartItemTotal}>
-                      ${(item.price * item.quantity).toFixed(2)}
+                      ${(item.precio * item.quantity).toFixed(2)}
                     </Text>
                   </View>
                 </View>
               ))}
 
-              {/* Resumen de costos */}
+              {/* Resumen */}
               <View style={styles.summaryCard}>
                 <Text style={styles.summaryTitle}>Resumen</Text>
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Subtotal</Text>
-                  <Text style={styles.summaryValue}>${totalPrice.toFixed(2)} MXN</Text>
+                  <Text style={styles.summaryValue}>${subtotal.toFixed(2)} MXN</Text>
                 </View>
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>IVA (16%)</Text>
-                  <Text style={styles.summaryValue}>${iva.toFixed(2)} MXN</Text>
-                </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Envío</Text>
-                  <Text style={[styles.summaryValue, { color: colors.success }]}>Gratis</Text>
+                  <Text style={styles.summaryValue}>${impuestos.toFixed(2)} MXN</Text>
                 </View>
                 <View style={[styles.summaryRow, styles.totalRow]}>
                   <Text style={styles.totalLabel}>Total</Text>
@@ -150,11 +298,69 @@ export default function CartScreen() {
                 </View>
               </View>
 
-              {/* Botón de pago */}
-              <TouchableOpacity style={styles.checkoutButton}>
-                <Text style={styles.checkoutButtonText}>
-                  Proceder al Pago → ${total.toFixed(2)} MXN
-                </Text>
+              {/* Método de pago */}
+              <View style={styles.pagoCard}>
+                <Text style={styles.pagoTitle}>Método de Pago</Text>
+                <View style={styles.pagoOptions}>
+                  <TouchableOpacity
+                    style={[styles.pagoOption, metodoPago === 'efectivo' && styles.pagoOptionActive]}
+                    onPress={() => setMetodoPago('efectivo')}
+                  >
+                    <Text style={styles.pagoOptionIcon}>💵</Text>
+                    <Text style={[styles.pagoOptionText, metodoPago === 'efectivo' && styles.pagoOptionTextActive]}>
+                      Efectivo
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.pagoOption, metodoPago === 'tarjeta' && styles.pagoOptionActive]}
+                    onPress={() => setMetodoPago('tarjeta')}
+                  >
+                    <Text style={styles.pagoOptionIcon}>💳</Text>
+                    <Text style={[styles.pagoOptionText, metodoPago === 'tarjeta' && styles.pagoOptionTextActive]}>
+                      Tarjeta
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Campo de monto solo si es efectivo */}
+                {metodoPago === 'efectivo' && (
+                  <View style={styles.efectivoSection}>
+                    <Text style={styles.efectivoLabel}>MONTO RECIBIDO</Text>
+                    <View style={styles.input}>
+                      <Text style={styles.currencySymbol}>$</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="0.00"
+                        placeholderTextColor={colors.textSecondary}
+                        value={montoEfectivo}
+                        onChangeText={setMontoEfectivo}
+                        keyboardType="decimal-pad"
+                      />
+                    </View>
+                    {/* Cambio en tiempo real */}
+                    {parseFloat(montoEfectivo) >= total && (
+                      <View style={styles.cambioRow}>
+                        <Text style={styles.cambioLabel}>Cambio a devolver:</Text>
+                        <Text style={styles.cambioValue}>${cambio.toFixed(2)} MXN</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+
+              {/* Botón confirmar */}
+              <TouchableOpacity
+                style={[styles.checkoutButton, loadingVenta && { opacity: 0.6 }]}
+                onPress={handleConfirmarVenta}
+                disabled={loadingVenta}
+              >
+                {loadingVenta ? (
+                  <ActivityIndicator color={colors.white} />
+                ) : (
+                  <Text style={styles.checkoutButtonText}>
+                    Confirmar Venta → ${total.toFixed(2)} MXN
+                  </Text>
+                )}
               </TouchableOpacity>
             </>
           )}
@@ -163,13 +369,12 @@ export default function CartScreen() {
     );
   }
 
-  // Vista del catálogo (por defecto)
+  // ─── VISTA: CATÁLOGO ──────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      {/* Header con botón del carrito */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Nuestro Catálogo</Text>
-        <TouchableOpacity style={styles.cartIconContainer} onPress={() => setShowCart(true)}>
+        <Text style={styles.headerTitle}>Catálogo</Text>
+        <TouchableOpacity style={styles.cartIconContainer} onPress={() => setView('cart')}>
           <Text style={styles.cartIcon}>🛒</Text>
           {totalItems > 0 && (
             <View style={styles.badge}>
@@ -193,328 +398,202 @@ export default function CartScreen() {
         </View>
       </View>
 
-      {/* Categorías */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-        <View style={styles.categoriesContainer}>
-          {CATEGORIES.map(cat => (
-            <TouchableOpacity
-              key={cat}
-              style={[styles.categoryChip, activeCategory === cat && styles.categoryChipActive]}
-              onPress={() => setActiveCategory(cat)}
-            >
-              <Text style={[styles.categoryText, activeCategory === cat && styles.categoryTextActive]}>
-                {cat}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      {loadingProductos ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.secondary} />
+          <Text style={styles.loadingText}>Cargando catálogo...</Text>
         </View>
-      </ScrollView>
-
-      {/* Grilla de productos */}
-      <FlatList
-        data={filteredProducts}
-        renderItem={renderProduct}
-        keyExtractor={item => item.id}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        contentContainerStyle={styles.productList}
-        showsVerticalScrollIndicator={false}
-      />
+      ) : errorProductos ? (
+        <View style={styles.centered}>
+          <Text style={styles.errorEmoji}>⚠️</Text>
+          <Text style={styles.errorText}>{errorProductos}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadProductos}>
+            <Text style={styles.retryText}>Reintentar</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={productosFiltrados}
+          keyExtractor={item => item.id.toString()}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
+          contentContainerStyle={styles.productList}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.centered}>
+              <Text style={styles.emptyText}>No hay productos disponibles</Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <View style={styles.productCard}>
+              {item.imagen ? (
+                <Image
+                  source={{ uri: `data:image/jpeg;base64,${item.imagen}` }}
+                  style={styles.productImage}
+                />
+              ) : (
+                <View style={styles.productImagePlaceholder}>
+                  <Text style={styles.productImagePlaceholderText}>☕</Text>
+                </View>
+              )}
+              <View style={styles.productInfo}>
+                <Text style={styles.productName} numberOfLines={2}>{item.nombre}</Text>
+                <View style={styles.productFooter}>
+                  <Text style={styles.productPrice}>${item.precio} MXN</Text>
+                  <TouchableOpacity
+                    style={styles.addButton}
+                    onPress={() => addToCart({ ...item, price: item.precio })}
+                  >
+                    <Text style={styles.addButtonText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          )}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     backgroundColor: colors.primary,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 55,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingTop: 55, paddingBottom: 16, paddingHorizontal: 20,
   },
-  headerTitle: {
-    color: colors.textLight,
-    fontSize: 22,
-    fontWeight: 'bold',
-  },
-  backButton: {
-    color: colors.textLight,
-    fontSize: 16,
-  },
-  cartIconContainer: {
-    position: 'relative',
-    padding: 4,
-  },
-  cartIcon: {
-    fontSize: 24,
-  },
+  headerTitle: { color: colors.textLight, fontSize: 22, fontWeight: 'bold' },
+  backButton: { color: colors.textLight, fontSize: 24 },
+  cartIconContainer: { position: 'relative', padding: 4 },
+  cartIcon: { fontSize: 24 },
   badge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: colors.secondary,
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'absolute', top: 0, right: 0,
+    backgroundColor: colors.secondary, borderRadius: 10,
+    minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center',
   },
-  badgeText: {
-    color: colors.white,
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  searchContainer: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
+  badgeText: { color: colors.white, fontSize: 11, fontWeight: 'bold' },
+  searchContainer: { backgroundColor: colors.primary, paddingHorizontal: 20, paddingBottom: 20 },
   searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.surface, borderRadius: 14,
+    paddingHorizontal: 14, paddingVertical: 10,
   },
-  searchIcon: {
-    fontSize: 16,
-    marginRight: 8,
+  searchIcon: { fontSize: 16, marginRight: 8 },
+  searchInput: { flex: 1, fontSize: 15, color: colors.textPrimary },
+  productList: { padding: 16, paddingBottom: 20 },
+  row: { justifyContent: 'space-between', marginBottom: 16 },
+  productCard: { width: '48%', backgroundColor: colors.white, borderRadius: 16, overflow: 'hidden' },
+  productImage: { width: '100%', height: 120 },
+  productImagePlaceholder: {
+    width: '100%', height: 120,
+    backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center',
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: colors.textPrimary,
-  },
-  categoriesScroll: {
-    maxHeight: 56,
-  },
-  categoriesContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  categoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-  },
-  categoryChipActive: {
-    backgroundColor: colors.primary,
-  },
-  categoryText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  categoryTextActive: {
-    color: colors.white,
-    fontWeight: '700',
-  },
-  productList: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-    paddingTop: 8,
-  },
-  row: {
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  productCard: {
-    width: '48%',
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  imageContainer: {},
-  productImage: {
-    width: '100%',
-    height: 130,
-  },
-  productInfo: {
-    padding: 10,
-  },
-  productRating: {
-    fontSize: 12,
-    color: colors.secondary,
-    marginBottom: 4,
-  },
-  productName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 8,
-  },
-  productFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  productPrice: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: colors.secondary,
-  },
+  productImagePlaceholderText: { fontSize: 40 },
+  productInfo: { padding: 10 },
+  productName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, marginBottom: 8 },
+  productFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  productPrice: { fontSize: 12, fontWeight: 'bold', color: colors.secondary },
   addButton: {
-    width: 28,
-    height: 28,
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 28, height: 28, backgroundColor: colors.primary,
+    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
   },
-  addButtonText: {
-    color: colors.white,
-    fontSize: 18,
-    fontWeight: 'bold',
-    lineHeight: 22,
-  },
-  // Estilos del carrito
-  cartScroll: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  emptyCart: {
-    alignItems: 'center',
-    marginTop: 80,
-  },
-  emptyCartEmoji: {
-    fontSize: 60,
-    marginBottom: 16,
-  },
-  emptyCartText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
+  addButtonText: { color: colors.white, fontSize: 18, fontWeight: 'bold', lineHeight: 22 },
+  // Carrito
+  scroll: { padding: 20, paddingBottom: 40 },
   cartItem: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 12,
+    backgroundColor: colors.white, borderRadius: 16, padding: 14,
+    flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 12,
   },
-  cartItemImageContainer: {},
-  cartItemImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
+  cartItemImage: { width: 64, height: 64, borderRadius: 12 },
+  cartItemImagePlaceholder: {
+    width: 64, height: 64, borderRadius: 12,
+    backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center',
   },
-  cartItemInfo: {
-    flex: 1,
-  },
-  cartItemName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  cartItemPrice: {
-    fontSize: 13,
-    color: colors.secondary,
-    marginTop: 2,
-  },
-  quantityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    gap: 10,
-  },
+  cartItemInfo: { flex: 1 },
+  cartItemName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
+  cartItemPrice: { fontSize: 13, color: colors.secondary, marginTop: 2 },
+  quantityRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 10 },
   quantityButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center',
   },
-  quantityButtonDark: {
-    backgroundColor: colors.primary,
+  quantityButtonDark: { backgroundColor: colors.primary },
+  quantityButtonText: { fontSize: 18, fontWeight: 'bold', color: colors.textPrimary, lineHeight: 22 },
+  quantityText: { fontSize: 15, fontWeight: '600', color: colors.textPrimary, minWidth: 20, textAlign: 'center' },
+  cartItemRight: { alignItems: 'flex-end', gap: 8 },
+  deleteIcon: { fontSize: 20 },
+  cartItemTotal: { fontSize: 15, fontWeight: 'bold', color: colors.textPrimary },
+  summaryCard: { backgroundColor: colors.white, borderRadius: 16, padding: 16, marginBottom: 16 },
+  summaryTitle: { fontSize: 16, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 12 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  summaryLabel: { fontSize: 14, color: colors.textSecondary },
+  summaryValue: { fontSize: 14, color: colors.textPrimary },
+  totalRow: { borderTopWidth: 1, borderTopColor: colors.surface, paddingTop: 10, marginTop: 4 },
+  totalLabel: { fontSize: 16, fontWeight: 'bold', color: colors.textPrimary },
+  totalValue: { fontSize: 16, fontWeight: 'bold', color: colors.secondary },
+  // Pago
+  pagoCard: { backgroundColor: colors.white, borderRadius: 16, padding: 16, marginBottom: 16 },
+  pagoTitle: { fontSize: 15, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 12 },
+  pagoOptions: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  pagoOption: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 12, borderRadius: 12,
+    backgroundColor: colors.surface, borderWidth: 2, borderColor: 'transparent',
   },
-  quantityButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    lineHeight: 22,
+  pagoOptionActive: { borderColor: colors.secondary, backgroundColor: colors.background },
+  pagoOptionIcon: { fontSize: 20 },
+  pagoOptionText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+  pagoOptionTextActive: { color: colors.secondary },
+  efectivoSection: { gap: 8 },
+  efectivoLabel: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, letterSpacing: 1 },
+  input: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.surface, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12,
   },
-  quantityText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    minWidth: 20,
-    textAlign: 'center',
+  currencySymbol: { fontSize: 15, color: colors.textSecondary, marginRight: 8 },
+  textInput: { flex: 1, fontSize: 15, color: colors.textPrimary },
+  cambioRow: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    backgroundColor: '#F0FDF4', borderRadius: 10, padding: 12,
   },
-  cartItemRight: {
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  deleteIcon: {
-    fontSize: 20,
-  },
-  cartItemTotal: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-  },
-  summaryCard: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  summaryTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 12,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  summaryLabel: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  summaryValue: {
-    fontSize: 14,
-    color: colors.textPrimary,
-  },
-  totalRow: {
-    borderTopWidth: 1,
-    borderTopColor: colors.surface,
-    paddingTop: 10,
-    marginTop: 4,
-  },
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-  },
-  totalValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.secondary,
-  },
+  cambioLabel: { fontSize: 14, color: colors.textSecondary },
+  cambioValue: { fontSize: 15, fontWeight: 'bold', color: colors.success },
   checkoutButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
+    backgroundColor: colors.primary, borderRadius: 14,
+    paddingVertical: 16, alignItems: 'center',
   },
-  checkoutButtonText: {
-    color: colors.textLight,
-    fontSize: 16,
-    fontWeight: 'bold',
+  checkoutButtonText: { color: colors.textLight, fontSize: 16, fontWeight: 'bold' },
+  // Ticket
+  ticketCard: {
+    backgroundColor: colors.white, borderRadius: 16, padding: 20, marginBottom: 20,
   },
+  ticketLogo: { fontSize: 22, fontWeight: 'bold', color: colors.primary, textAlign: 'center', marginBottom: 4 },
+  ticketFolio: { fontSize: 16, fontWeight: '600', color: colors.textPrimary, textAlign: 'center' },
+  ticketFecha: { fontSize: 12, color: colors.textSecondary, textAlign: 'center', marginBottom: 12 },
+  ticketDivider: { borderTopWidth: 1, borderTopColor: colors.surface, marginVertical: 10, borderStyle: 'dashed' },
+  ticketRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  ticketItem: { fontSize: 14, color: colors.textPrimary, flex: 1 },
+  ticketItemPrice: { fontSize: 14, color: colors.textPrimary, fontWeight: '500' },
+  ticketLabel: { fontSize: 14, color: colors.textSecondary },
+  ticketValue: { fontSize: 14, color: colors.textPrimary },
+  ticketTotalRow: { marginTop: 4 },
+  ticketTotalLabel: { fontSize: 16, fontWeight: 'bold', color: colors.textPrimary },
+  ticketTotalValue: { fontSize: 16, fontWeight: 'bold', color: colors.secondary },
+  ticketGracias: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginTop: 8 },
+  nuevaVentaButton: {
+    backgroundColor: colors.primary, borderRadius: 14,
+    paddingVertical: 16, alignItems: 'center',
+  },
+  nuevaVentaButtonText: { color: colors.white, fontSize: 16, fontWeight: 'bold' },
+  // Estados
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+  loadingText: { marginTop: 12, color: colors.textSecondary },
+  errorEmoji: { fontSize: 48, marginBottom: 12 },
+  errorText: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', marginBottom: 16 },
+  retryButton: { backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 10 },
+  retryText: { color: colors.white, fontWeight: '600' },
+  emptyEmoji: { fontSize: 60, marginBottom: 16 },
+  emptyText: { fontSize: 15, color: colors.textSecondary },
 });
