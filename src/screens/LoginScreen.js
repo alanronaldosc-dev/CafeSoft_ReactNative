@@ -1,13 +1,8 @@
 /**
  * LoginScreen.js
- * Pantalla de inicio de sesión para CafeSoft.
- * - Muestra los campos de email, contraseña y selección de rol.
- * - Gestiona la visibilidad de la contraseña y un dropdown de roles.
- * - Usa estado local con useState para mantener los valores del formulario.
- * - Al pulsar Iniciar Sesión navega a la pantalla principal (mock).
- *
- * @param {object} navigation Navegación de React Navigation.
+ * Pantalla de inicio de sesión conectada a la API de CafeSoft.
  */
+
 import React, { useState } from 'react';
 import {
   View,
@@ -16,176 +11,388 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import colors from '../theme/colors';
 
-// Los roles disponibles para el selector
+import colors from '../theme/colors';
+import api from '../services/api';
+
 const ROLES = ['Cliente', 'Administrador', 'Empleado'];
 
+const TIPOS_USUARIO = {
+  Administrador: 0,
+  Empleado: 1,
+  Cliente: 2,
+};
+
 export default function LoginScreen({ navigation }) {
-  // useState es como una variable reactiva: cuando cambia, la pantalla se actualiza.
-  // En Laravel sería como $request->input('email'), pero en tiempo real.
   const [selectedRole, setSelectedRole] = useState('Cliente');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [cargando, setCargando] = useState(false);
 
-  // Función que simula el login (por ahora solo navega al Main)
-  // En Laravel sería el método login() del AuthController
-  const handleLogin = () => {
-    // Aquí irá la validación y llamada a la API en el futuro
-    navigation.navigate('Main');
+  const handleLogin = async () => {
+    const emailLimpio = email.trim().toLowerCase();
+    const passwordLimpia = password.trim();
+
+    if (!emailLimpio || !passwordLimpia) {
+      Alert.alert(
+        'Campos incompletos',
+        'Ingresa tu correo y contraseña.'
+      );
+      return;
+    }
+
+    setCargando(true);
+
+    try {
+      const respuesta = await api.post('/usuarios/login', {
+        email: emailLimpio,
+        password: passwordLimpia,
+      });
+
+      const usuario = respuesta.data?.usuario;
+
+      if (!usuario) {
+        Alert.alert(
+          'Error',
+          'La API no devolvió los datos del usuario.'
+        );
+        return;
+      }
+
+      const tipoSeleccionado = TIPOS_USUARIO[selectedRole];
+
+      if (usuario.userTipo !== tipoSeleccionado) {
+        Alert.alert(
+          'Rol incorrecto',
+          `Este usuario no está registrado como ${selectedRole}.`
+        );
+        return;
+      }
+
+      navigation.reset({
+        index: 0,
+        routes: [
+          {
+            name: 'Main',
+            params: {
+              usuario,
+            },
+          },
+        ],
+      });
+    } catch (error) {
+      console.error(
+        'Error al iniciar sesión:',
+        error.response?.data || error.message
+      );
+
+      if (error.response?.status === 400) {
+        Alert.alert(
+          'Datos inválidos',
+          error.response?.data?.error ||
+            'Revisa los datos ingresados.'
+        );
+      } else if (error.response?.status === 401) {
+        Alert.alert(
+          'Inicio de sesión fallido',
+          'Correo o contraseña incorrectos.'
+        );
+      } else if (error.response?.status === 403) {
+        Alert.alert(
+          'Acceso denegado',
+          'Tu usuario no tiene permiso para ingresar.'
+        );
+      } else if (!error.response) {
+        Alert.alert(
+          'Sin conexión',
+          'No se pudo conectar con la API. Revisa la IP, el Wi-Fi y que Spring Boot esté encendido.'
+        );
+      } else {
+        Alert.alert(
+          'Error',
+          error.response?.data?.error ||
+            'No se pudo iniciar sesión.'
+        );
+      }
+    } finally {
+      setCargando(false);
+    }
   };
 
   return (
-    // ScrollView permite hacer scroll si el contenido no entra en pantalla
-    <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-
-      {/* Header marrón oscuro con el ícono y título */}
-      <View style={styles.header}>
-        <View style={styles.iconContainer}>
-          <Text style={styles.iconText}>☕</Text>
-        </View>
-        <Text style={styles.headerSubtitle}>Paso 2 — Iniciar Sesión</Text>
-      </View>
-
-      {/* Contenedor del formulario */}
-      <View style={styles.formContainer}>
-        <Text style={styles.title}>Bienvenido de nuevo</Text>
-
-        {/* --- SELECTOR DE ROL --- */}
-        <Text style={styles.label}>ROL DE ACCESO</Text>
-        {/* TouchableOpacity es un botón que responde al toque, como un <button> en HTML */}
-        <TouchableOpacity
-          style={styles.input}
-          onPress={() => setShowRoleDropdown(!showRoleDropdown)}
-        >
-          <Text style={styles.roleIndicator}>●</Text>
-          <Text style={styles.inputText}>{selectedRole}</Text>
-          <Text style={styles.dropdownArrow}>▾</Text>
-        </TouchableOpacity>
-
-        {/* Dropdown de roles, solo se muestra si showRoleDropdown es true */}
-        {showRoleDropdown && (
-          <View style={styles.dropdown}>
-            {ROLES.map((role) => (
-              <TouchableOpacity
-                key={role}
-                style={styles.dropdownItem}
-                onPress={() => {
-                  setSelectedRole(role);
-                  setShowRoleDropdown(false);
-                }}
-              >
-                <Text style={styles.dropdownItemText}>{role}</Text>
-              </TouchableOpacity>
-            ))}
+    <KeyboardAvoidingView
+      style={styles.keyboardContainer}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.header}>
+          <View style={styles.iconContainer}>
+            <Text style={styles.iconText}>☕</Text>
           </View>
-        )}
 
-        {/* --- CAMPO EMAIL --- */}
-        <Text style={styles.label}>CORREO ELECTRÓNICO</Text>
-        <View style={styles.input}>
-          <Text style={styles.inputIcon}>✉</Text>
-          {/* TextInput es el equivalente al <input> de HTML */}
-          <TextInput
-            style={styles.textInput}
-            placeholder="tu@correo.com"
-            placeholderTextColor={colors.textSecondary}
-            value={email}
-            onChangeText={setEmail} // cada vez que el usuario escribe, actualiza el estado
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+          <Text style={styles.headerTitle}>CafeSoft</Text>
+          <Text style={styles.headerSubtitle}>
+            Inicia sesión para continuar
+          </Text>
         </View>
 
-        {/* --- CAMPO CONTRASEÑA --- */}
-        <Text style={styles.label}>CONTRASEÑA</Text>
-        <View style={styles.input}>
-          <Text style={styles.inputIcon}>🔒</Text>
-          <TextInput
-            style={styles.textInput}
-            placeholder="••••••••"
-            placeholderTextColor={colors.textSecondary}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword} // oculta el texto si es true
-          />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <Text style={styles.inputIcon}>{showPassword ? '🙈' : '👁'}</Text>
+        <View style={styles.formContainer}>
+          <Text style={styles.title}>Bienvenido de nuevo</Text>
+
+          <Text style={styles.description}>
+            Ingresa tus datos para acceder al sistema.
+          </Text>
+
+          <Text style={styles.label}>ROL DE ACCESO</Text>
+
+          <TouchableOpacity
+            style={styles.input}
+            onPress={() =>
+              setShowRoleDropdown(!showRoleDropdown)
+            }
+            disabled={cargando}
+          >
+            <Text style={styles.roleIndicator}>●</Text>
+
+            <Text style={styles.inputText}>
+              {selectedRole}
+            </Text>
+
+            <Text style={styles.dropdownArrow}>
+              {showRoleDropdown ? '▴' : '▾'}
+            </Text>
           </TouchableOpacity>
-        </View>
 
-        {/* Link de olvidé contraseña */}
-        <TouchableOpacity style={styles.forgotPassword}>
-          <Text style={styles.forgotPasswordText}>¿Olvidé mi contraseña?</Text>
-        </TouchableOpacity>
+          {showRoleDropdown && (
+            <View style={styles.dropdown}>
+              {ROLES.map((role) => (
+                <TouchableOpacity
+                  key={role}
+                  style={[
+                    styles.dropdownItem,
+                    selectedRole === role &&
+                      styles.dropdownItemSelected,
+                  ]}
+                  onPress={() => {
+                    setSelectedRole(role);
+                    setShowRoleDropdown(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      selectedRole === role &&
+                        styles.dropdownItemTextSelected,
+                    ]}
+                  >
+                    {role}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
-        {/* Botón principal de login */}
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-          <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
-        </TouchableOpacity>
+          <Text style={styles.label}>
+            CORREO ELECTRÓNICO
+          </Text>
 
-        {/* Link para ir al registro */}
-        <View style={styles.registerLink}>
-          <Text style={styles.registerText}>¿No tienes cuenta? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={styles.registerLinkText}>Regístrate</Text>
+          <View style={styles.input}>
+            <Text style={styles.inputIcon}>✉</Text>
+
+            <TextInput
+              style={styles.textInput}
+              placeholder="tu@correo.com"
+              placeholderTextColor={colors.textSecondary}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              editable={!cargando}
+              returnKeyType="next"
+            />
+          </View>
+
+          <Text style={styles.label}>CONTRASEÑA</Text>
+
+          <View style={styles.input}>
+            <Text style={styles.inputIcon}>🔒</Text>
+
+            <TextInput
+              style={styles.textInput}
+              placeholder="Ingresa tu contraseña"
+              placeholderTextColor={colors.textSecondary}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="password"
+              editable={!cargando}
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
+            />
+
+            <TouchableOpacity
+              onPress={() =>
+                setShowPassword(!showPassword)
+              }
+              disabled={cargando}
+            >
+              <Text style={styles.passwordIcon}>
+                {showPassword ? '🙈' : '👁'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={styles.forgotPassword}
+            disabled={cargando}
+            onPress={() =>
+              Alert.alert(
+                'Recuperar contraseña',
+                'Esta opción todavía no está disponible.'
+              )
+            }
+          >
+            <Text style={styles.forgotPasswordText}>
+              ¿Olvidaste tu contraseña?
+            </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.loginButton,
+              cargando && styles.loginButtonDisabled,
+            ]}
+            onPress={handleLogin}
+            disabled={cargando}
+            activeOpacity={0.8}
+          >
+            {cargando ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator
+                  color={colors.textLight}
+                  size="small"
+                />
+
+                <Text style={styles.loginButtonText}>
+                  Iniciando sesión...
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.loginButtonText}>
+                Iniciar sesión
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.registerLink}>
+            <Text style={styles.registerText}>
+              ¿No tienes cuenta?{' '}
+            </Text>
+
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('Register')
+              }
+              disabled={cargando}
+            >
+              <Text style={styles.registerLinkText}>
+                Regístrate
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
-// Los estilos van siempre al final del archivo.
-// En lugar de CSS, usás objetos JavaScript. Las propiedades son camelCase.
-// padding: 16 equivale a padding: 16px en CSS.
 const styles = StyleSheet.create({
+  keyboardContainer: {
+    flex: 1,
+  },
+
   scrollView: {
     flex: 1,
     backgroundColor: colors.primary,
   },
+
   scrollContent: {
     flexGrow: 1,
   },
+
   header: {
     backgroundColor: colors.primary,
     alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 30,
+    paddingTop: 55,
+    paddingBottom: 32,
+    paddingHorizontal: 24,
   },
+
   iconContainer: {
-    width: 64,
-    height: 64,
+    width: 68,
+    height: 68,
     backgroundColor: colors.secondary,
-    borderRadius: 16,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
+
   iconText: {
-    fontSize: 32,
+    fontSize: 34,
   },
+
+  headerTitle: {
+    color: colors.textLight,
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+
   headerSubtitle: {
     color: colors.textLight,
     fontSize: 14,
+    opacity: 0.85,
   },
+
   formContainer: {
     flex: 1,
     backgroundColor: colors.background,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    padding: 28,
-    paddingTop: 36,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 28,
+    paddingTop: 34,
+    paddingBottom: 36,
   },
+
   title: {
-    fontSize: 26,
+    fontSize: 27,
     fontWeight: 'bold',
     color: colors.textPrimary,
-    marginBottom: 24,
+    marginBottom: 6,
   },
+
+  description: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 16,
+  },
+
   label: {
     fontSize: 11,
     fontWeight: '700',
@@ -194,84 +401,127 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 16,
   },
+
   input: {
-    flexDirection: 'row',      // los elementos internos van en fila (como flex-direction: row en CSS)
+    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: 14,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    minHeight: 54,
   },
+
   inputIcon: {
     fontSize: 16,
     marginRight: 10,
     color: colors.textSecondary,
   },
+
+  passwordIcon: {
+    fontSize: 18,
+    marginLeft: 10,
+  },
+
   textInput: {
     flex: 1,
     fontSize: 15,
     color: colors.textPrimary,
+    paddingVertical: 14,
   },
+
   inputText: {
     flex: 1,
     fontSize: 15,
     color: colors.textPrimary,
   },
+
   roleIndicator: {
     color: colors.secondary,
     marginRight: 10,
     fontSize: 12,
   },
+
   dropdownArrow: {
     color: colors.textSecondary,
     fontSize: 16,
   },
+
   dropdown: {
     backgroundColor: colors.surface,
     borderRadius: 14,
-    marginTop: 4,
+    marginTop: 6,
     overflow: 'hidden',
   },
+
   dropdownItem: {
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.background,
   },
+
+  dropdownItemSelected: {
+    backgroundColor: colors.background,
+  },
+
   dropdownItemText: {
     fontSize: 15,
     color: colors.textPrimary,
   },
+
+  dropdownItemTextSelected: {
+    fontWeight: 'bold',
+    color: colors.secondary,
+  },
+
   forgotPassword: {
     alignSelf: 'flex-end',
     marginTop: 12,
-    marginBottom: 8,
+    marginBottom: 6,
   },
+
   forgotPasswordText: {
     color: colors.secondary,
     fontSize: 14,
+    fontWeight: '600',
   },
+
   loginButton: {
     backgroundColor: colors.primary,
     borderRadius: 14,
-    paddingVertical: 16,
+    minHeight: 54,
     alignItems: 'center',
-    marginTop: 16,
+    justifyContent: 'center',
+    marginTop: 18,
   },
+
+  loginButtonDisabled: {
+    opacity: 0.7,
+  },
+
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+
   loginButtonText: {
     color: colors.textLight,
     fontSize: 16,
     fontWeight: 'bold',
   },
+
   registerLink: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 20,
+    marginTop: 22,
   },
+
   registerText: {
     color: colors.textSecondary,
     fontSize: 14,
   },
+
   registerLinkText: {
     color: colors.secondary,
     fontSize: 14,

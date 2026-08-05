@@ -19,7 +19,7 @@ const IVA = 0.16;
 // ID de usuario fijo por ahora (cuando se integre auth, vendrá del contexto de sesión)
 const USUARIO_ID = 1;
 
-const BASE_URL = 'http://192.168.101.116:8080/api';
+const BASE_URL = 'http://192.168.92.198:8080/api';
 
 export default function CartScreen() {
   const { cartItems, addToCart, removeFromCart, deleteFromCart, totalItems, totalPrice } = useCart();
