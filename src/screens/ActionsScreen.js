@@ -68,6 +68,25 @@ export default function ActionsScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {/* Categorías */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardIconContainer}>
+              <Text style={styles.cardIcon}>🏷️</Text>
+            </View>
+            <View>
+              <Text style={styles.cardTitle}>Categorías</Text>
+              <Text style={styles.cardSub}>Organiza los productos del menú</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.cardButton} onPress={() => navigation.navigate('CategoriasList')}>
+            <Text style={styles.cardButtonText}>Ver Lista de Categorías →</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.cardButton, styles.cardButtonSecondary]} onPress={() => navigation.navigate('CategoriaForm', { categoria: null })}>
+            <Text style={[styles.cardButtonText, styles.cardButtonTextSecondary]}>+ Nueva Categoría</Text>
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
     </View>
   );

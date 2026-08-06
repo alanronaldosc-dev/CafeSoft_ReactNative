@@ -1,9 +1,4 @@
 // CartScreen.js
-// Flujo completo de venta:
-// 1. Catálogo de productos (desde la API)
-// 2. Carrito con método de pago (efectivo/tarjeta)
-// 3. Ticket de confirmación
-
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
@@ -15,6 +10,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import colors from '../theme/colors';
 import { useCart } from '../context/CartContext';
 import ProductoService from '../services/ProductoService';
+import CategoriaService from '../services/CategoriaService';
 
 const IVA = 0.16;
 const USUARIO_ID = 1;
@@ -23,85 +19,72 @@ const BASE_URL = 'http://192.168.100.6:8080/api';
 export default function CartScreen() {
   const { cartItems, addToCart, removeFromCart, deleteFromCart, totalItems, totalPrice } = useCart();
 
-  // Vista activa: 'catalog' | 'cart' | 'ticket'
   const [view, setView] = useState('catalog');
-
-  // Productos de la API
   const [productos, setProductos] = useState([]);
   const [loadingProductos, setLoadingProductos] = useState(true);
   const [errorProductos, setErrorProductos] = useState(null);
   const [search, setSearch] = useState('');
 
+  // Categorías
+  const [categorias, setCategorias] = useState([]);
+  const [categoriaActiva, setCategoriaActiva] = useState(null);
+
   // Pago
   const [metodoPago, setMetodoPago] = useState('efectivo');
   const [montoEfectivo, setMontoEfectivo] = useState('');
   const [loadingVenta, setLoadingVenta] = useState(false);
-
-  // Ticket (respuesta de la API)
   const [ticket, setTicket] = useState(null);
 
-  // Carga productos cada vez que entrás al tab
   useFocusEffect(
     useCallback(() => {
-      loadProductos();
+      loadData();
     }, [])
   );
 
-  const loadProductos = async () => {
+  const loadData = async () => {
     try {
       setLoadingProductos(true);
       setErrorProductos(null);
-      const data = await ProductoService.getAll();
-      setProductos(data);
-    } catch (e) {
+      const [productosData, categoriasData] = await Promise.all([
+        ProductoService.getAll(),
+        CategoriaService.getActivas().catch(() => []),
+      ]);
+      setProductos(productosData);
+      setCategorias(categoriasData);
+    } catch {
       setErrorProductos('No se pudo cargar el catálogo');
     } finally {
       setLoadingProductos(false);
     }
   };
 
-  const productosFiltrados = productos.filter(p =>
-    p.nombre.toLowerCase().includes(search.toLowerCase())
-  );
+  const productosFiltrados = productos.filter(p => {
+    const coincideBusqueda = p.nombre.toLowerCase().includes(search.toLowerCase());
+    const coincideCategoria = categoriaActiva === null || p.categoriaId === categoriaActiva;
+    return coincideBusqueda && coincideCategoria;
+  });
 
-  // Cálculos del carrito
   const subtotal = totalPrice;
   const impuestos = subtotal * IVA;
   const total = subtotal + impuestos;
   const cambio = metodoPago === 'efectivo' && parseFloat(montoEfectivo) > 0
-    ? parseFloat(montoEfectivo) - total
-    : 0;
+    ? parseFloat(montoEfectivo) - total : 0;
 
-  // Confirma la venta enviando a la API
   const handleConfirmarVenta = async () => {
-    if (cartItems.length === 0) {
-      Alert.alert('Error', 'El carrito está vacío');
-      return;
-    }
+    if (cartItems.length === 0) { Alert.alert('Error', 'El carrito está vacío'); return; }
     if (metodoPago === 'efectivo') {
       if (!montoEfectivo || parseFloat(montoEfectivo) <= 0) {
-        Alert.alert('Error', 'Ingresá el monto recibido en efectivo');
-        return;
+        Alert.alert('Error', 'Ingresá el monto recibido en efectivo'); return;
       }
       if (parseFloat(montoEfectivo) < total) {
-        Alert.alert('Error', `El monto es insuficiente. Total: $${total.toFixed(2)} MXN`);
-        return;
+        Alert.alert('Error', `Monto insuficiente. Total: $${total.toFixed(2)} MXN`); return;
       }
     }
-
     const ventaData = {
-      metodoPago,
-      usuarioId: USUARIO_ID,
-      detalles: cartItems.map(item => ({
-        productoId: item.id,
-        cantidad: item.quantity,
-      })),
-      ...(metodoPago === 'efectivo' && {
-        montoEfectivo: parseFloat(montoEfectivo),
-        cambio: cambio,
-      }),
+      metodoPago, usuarioId: USUARIO_ID,
+      detalles: cartItems.map(item => ({ productoId: item.id, cantidad: item.quantity })),
+      ...(metodoPago === 'efectivo' && { montoEfectivo: parseFloat(montoEfectivo), cambio }),
     };
-
     try {
       setLoadingVenta(true);
       const response = await fetch(`${BASE_URL}/ventas`, {
@@ -123,7 +106,6 @@ export default function CartScreen() {
     }
   };
 
-  // Limpia el carrito y vuelve al catálogo
   const handleNuevaVenta = () => {
     cartItems.forEach(item => deleteFromCart(item.id));
     setMetodoPago('efectivo');
@@ -142,8 +124,6 @@ export default function CartScreen() {
           <View style={{ width: 24 }} />
         </LinearGradient>
         <ScrollView contentContainerStyle={styles.scroll}>
-
-          {/* Encabezado del ticket */}
           <View style={styles.ticketCard}>
             <Text style={styles.ticketLogo}>☕ CafeSoft</Text>
             <Text style={styles.ticketFolio}>Folio: {ticket.folio}</Text>
@@ -151,22 +131,13 @@ export default function CartScreen() {
               {ticket.fecha ? new Date(ticket.fecha).toLocaleString('es-MX') : ''}
             </Text>
             <View style={styles.ticketDivider} />
-
-            {/* Detalle de productos */}
             {ticket.detalles?.map((d, i) => (
               <View key={i} style={styles.ticketRow}>
-                <Text style={styles.ticketItem}>
-                  {d.cantidad}x {d.productoNombre}
-                </Text>
-                <Text style={styles.ticketItemPrice}>
-                  ${(d.subtotal || 0).toFixed(2)}
-                </Text>
+                <Text style={styles.ticketItem}>{d.cantidad}x {d.productoNombre}</Text>
+                <Text style={styles.ticketItemPrice}>${(d.subtotal || 0).toFixed(2)}</Text>
               </View>
             ))}
-
             <View style={styles.ticketDivider} />
-
-            {/* Totales */}
             <View style={styles.ticketRow}>
               <Text style={styles.ticketLabel}>Subtotal</Text>
               <Text style={styles.ticketValue}>${(ticket.subtotal || 0).toFixed(2)} MXN</Text>
@@ -179,10 +150,7 @@ export default function CartScreen() {
               <Text style={styles.ticketTotalLabel}>TOTAL</Text>
               <Text style={styles.ticketTotalValue}>${(ticket.total || 0).toFixed(2)} MXN</Text>
             </View>
-
             <View style={styles.ticketDivider} />
-
-            {/* Método de pago */}
             <View style={styles.ticketRow}>
               <Text style={styles.ticketLabel}>Método de pago</Text>
               <Text style={styles.ticketValue}>
@@ -203,17 +171,14 @@ export default function CartScreen() {
                 </View>
               </>
             )}
-
             <View style={styles.ticketDivider} />
             <Text style={styles.ticketGracias}>¡Gracias por tu compra!</Text>
           </View>
-
           <TouchableOpacity onPress={handleNuevaVenta} style={styles.buttonWrapper}>
             <LinearGradient colors={[colors.secondary, '#A0522D', colors.primary]} style={styles.nuevaVentaButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
               <Text style={styles.nuevaVentaButtonText}>Nueva Venta</Text>
             </LinearGradient>
           </TouchableOpacity>
-
         </ScrollView>
       </View>
     );
@@ -233,7 +198,6 @@ export default function CartScreen() {
             <Text style={styles.cartIcon}>🛒</Text>
           </View>
         </LinearGradient>
-
         <ScrollView contentContainerStyle={styles.scroll}>
           {cartItems.length === 0 ? (
             <View style={styles.centered}>
@@ -242,14 +206,10 @@ export default function CartScreen() {
             </View>
           ) : (
             <>
-              {/* Productos en el carrito */}
               {cartItems.map(item => (
                 <View key={item.id} style={styles.cartItem}>
                   {item.imagen ? (
-                    <Image
-                      source={{ uri: `data:image/jpeg;base64,${item.imagen}` }}
-                      style={styles.cartItemImage}
-                    />
+                    <Image source={{ uri: `data:image/jpeg;base64,${item.imagen}` }} style={styles.cartItemImage} />
                   ) : (
                     <View style={styles.cartItemImagePlaceholder}>
                       <Text style={{ fontSize: 24 }}>☕</Text>
@@ -259,17 +219,11 @@ export default function CartScreen() {
                     <Text style={styles.cartItemName}>{item.nombre}</Text>
                     <Text style={styles.cartItemPrice}>${item.precio} MXN</Text>
                     <View style={styles.quantityRow}>
-                      <TouchableOpacity
-                        style={styles.quantityButton}
-                        onPress={() => removeFromCart(item.id)}
-                      >
+                      <TouchableOpacity style={styles.quantityButton} onPress={() => removeFromCart(item.id)}>
                         <Text style={styles.quantityButtonText}>−</Text>
                       </TouchableOpacity>
                       <Text style={styles.quantityText}>{item.quantity}</Text>
-                      <TouchableOpacity
-                        style={[styles.quantityButton, styles.quantityButtonDark]}
-                        onPress={() => addToCart(item)}
-                      >
+                      <TouchableOpacity style={[styles.quantityButton, styles.quantityButtonDark]} onPress={() => addToCart(item)}>
                         <Text style={[styles.quantityButtonText, { color: colors.white }]}>+</Text>
                       </TouchableOpacity>
                     </View>
@@ -278,14 +232,10 @@ export default function CartScreen() {
                     <TouchableOpacity onPress={() => deleteFromCart(item.id)}>
                       <Text style={styles.deleteIcon}>🗑</Text>
                     </TouchableOpacity>
-                    <Text style={styles.cartItemTotal}>
-                      ${(item.precio * item.quantity).toFixed(2)}
-                    </Text>
+                    <Text style={styles.cartItemTotal}>${(item.precio * item.quantity).toFixed(2)}</Text>
                   </View>
                 </View>
               ))}
-
-              {/* Resumen */}
               <View style={styles.summaryCard}>
                 <Text style={styles.summaryTitle}>Resumen</Text>
                 <View style={styles.summaryRow}>
@@ -302,7 +252,6 @@ export default function CartScreen() {
                 </View>
               </View>
 
-              {/* Método de pago */}
               <View style={styles.pagoCard}>
                 <Text style={styles.pagoTitle}>Método de Pago</Text>
                 <View style={styles.pagoOptions}>
@@ -311,22 +260,16 @@ export default function CartScreen() {
                     onPress={() => setMetodoPago('efectivo')}
                   >
                     <Text style={styles.pagoOptionIcon}>💵</Text>
-                    <Text style={[styles.pagoOptionText, metodoPago === 'efectivo' && styles.pagoOptionTextActive]}>
-                      Efectivo
-                    </Text>
+                    <Text style={[styles.pagoOptionText, metodoPago === 'efectivo' && styles.pagoOptionTextActive]}>Efectivo</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.pagoOption, metodoPago === 'tarjeta' && styles.pagoOptionActive]}
                     onPress={() => setMetodoPago('tarjeta')}
                   >
                     <Text style={styles.pagoOptionIcon}>💳</Text>
-                    <Text style={[styles.pagoOptionText, metodoPago === 'tarjeta' && styles.pagoOptionTextActive]}>
-                      Tarjeta
-                    </Text>
+                    <Text style={[styles.pagoOptionText, metodoPago === 'tarjeta' && styles.pagoOptionTextActive]}>Tarjeta</Text>
                   </TouchableOpacity>
                 </View>
-
-                {/* Campo de monto solo si es efectivo */}
                 {metodoPago === 'efectivo' && (
                   <View style={styles.efectivoSection}>
                     <Text style={styles.efectivoLabel}>MONTO RECIBIDO</Text>
@@ -341,7 +284,6 @@ export default function CartScreen() {
                         keyboardType="decimal-pad"
                       />
                     </View>
-                    {/* Cambio en tiempo real */}
                     {parseFloat(montoEfectivo) >= total && (
                       <View style={styles.cambioRow}>
                         <Text style={styles.cambioLabel}>Cambio a devolver:</Text>
@@ -351,8 +293,6 @@ export default function CartScreen() {
                   </View>
                 )}
               </View>
-
-              {/* Botón confirmar */}
               <TouchableOpacity
                 onPress={handleConfirmarVenta}
                 disabled={loadingVenta}
@@ -401,6 +341,36 @@ export default function CartScreen() {
             onChangeText={setSearch}
           />
         </View>
+
+        {/* Filtro de categorías */}
+        {categorias.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.categoriaScroll}
+            contentContainerStyle={styles.categoriaScrollContent}
+          >
+            <TouchableOpacity
+              style={[styles.categoriaChip, categoriaActiva === null && styles.categoriaChipActive]}
+              onPress={() => setCategoriaActiva(null)}
+            >
+              <Text style={[styles.categoriaChipText, categoriaActiva === null && styles.categoriaChipTextActive]}>
+                🍽️ Todos
+              </Text>
+            </TouchableOpacity>
+            {categorias.map(cat => (
+              <TouchableOpacity
+                key={cat.id}
+                style={[styles.categoriaChip, categoriaActiva === cat.id && styles.categoriaChipActive]}
+                onPress={() => setCategoriaActiva(cat.id)}
+              >
+                <Text style={[styles.categoriaChipText, categoriaActiva === cat.id && styles.categoriaChipTextActive]}>
+                  🏷️ {cat.nombre}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </View>
 
       {loadingProductos ? (
@@ -412,7 +382,7 @@ export default function CartScreen() {
         <View style={styles.centered}>
           <Text style={styles.errorEmoji}>⚠️</Text>
           <Text style={styles.errorText}>{errorProductos}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadProductos}>
+          <TouchableOpacity style={styles.retryButton} onPress={loadData}>
             <Text style={styles.retryText}>Reintentar</Text>
           </TouchableOpacity>
         </View>
@@ -426,16 +396,15 @@ export default function CartScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.centered}>
-              <Text style={styles.emptyText}>No hay productos disponibles</Text>
+              <Text style={styles.emptyText}>
+                {categoriaActiva ? 'No hay productos en esta categoría' : 'No hay productos disponibles'}
+              </Text>
             </View>
           }
           renderItem={({ item }) => (
             <View style={styles.productCard}>
               {item.imagen ? (
-                <Image
-                  source={{ uri: `data:image/jpeg;base64,${item.imagen}` }}
-                  style={styles.productImage}
-                />
+                <Image source={{ uri: `data:image/jpeg;base64,${item.imagen}` }} style={styles.productImage} />
               ) : (
                 <View style={styles.productImagePlaceholder}>
                   <Text style={styles.productImagePlaceholderText}>☕</Text>
@@ -481,15 +450,32 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: colors.background,
   },
   badgeText: { color: colors.white, fontSize: 11, fontWeight: 'bold' },
-  searchContainer: { backgroundColor: colors.primary, paddingHorizontal: 20, paddingBottom: 20 },
+  // Buscador + categorías
+  searchContainer: { backgroundColor: colors.primary, paddingHorizontal: 20, paddingBottom: 12 },
   searchBox: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 16,
     paddingHorizontal: 14, paddingVertical: 10,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+    marginBottom: 10,
   },
   searchIcon: { fontSize: 16, marginRight: 8 },
   searchInput: { flex: 1, fontSize: 15, color: colors.white },
+  // Chips de categorías
+  categoriaScroll: { marginBottom: 4 },
+  categoriaScrollContent: { gap: 8, paddingRight: 4 },
+  categoriaChip: {
+    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+  },
+  categoriaChipActive: {
+    backgroundColor: colors.secondary,
+    borderColor: colors.secondary,
+  },
+  categoriaChipText: { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
+  categoriaChipTextActive: { color: colors.white, fontWeight: '700' },
+  // Grid productos
   productList: { padding: 16, paddingBottom: 20 },
   row: { justifyContent: 'space-between', marginBottom: 16 },
   productCard: {
@@ -507,11 +493,7 @@ const styles = StyleSheet.create({
   productName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, marginBottom: 8 },
   productFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   productPrice: { fontSize: 12, fontWeight: 'bold', color: colors.secondary },
-  addButtonWrapper: {
-    borderRadius: 12, shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4,
-  },
-  addButton: { width: 30, height: 30, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  addButton: { width: 30, height: 30, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
   addButtonText: { color: colors.white, fontSize: 20, fontWeight: 'bold', lineHeight: 24 },
   // Carrito
   scroll: { padding: 20, paddingBottom: 40 },
@@ -552,7 +534,6 @@ const styles = StyleSheet.create({
   totalRow: { borderTopWidth: 1, borderTopColor: colors.surface, paddingTop: 10, marginTop: 4 },
   totalLabel: { fontSize: 16, fontWeight: 'bold', color: colors.textPrimary },
   totalValue: { fontSize: 16, fontWeight: 'bold', color: colors.secondary },
-  // Pago
   pagoCard: {
     backgroundColor: colors.white, borderRadius: 18, padding: 16, marginBottom: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
@@ -589,6 +570,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
   },
   checkoutButtonText: { color: colors.white, fontSize: 16, fontWeight: 'bold' },
+  // Ticket
   ticketCard: {
     backgroundColor: colors.white, borderRadius: 20, padding: 20, marginBottom: 20,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
