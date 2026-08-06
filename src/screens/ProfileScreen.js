@@ -9,13 +9,9 @@
  */
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Switch,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import colors from '../theme/colors';
 
 // Datos mock del usuario activo
@@ -49,8 +45,10 @@ export default function ProfileScreen({ navigation }) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
 
-      {/* Header con info del usuario */}
-      <View style={styles.header}>
+      {/* Header con gradiente */}
+      <LinearGradient colors={['#3D1A00', '#6B3A1F']} style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+        <View style={[styles.headerCircle, styles.headerCircle1]} />
+        <View style={[styles.headerCircle, styles.headerCircle2]} />
         <View style={styles.avatarContainer}>
           <Text style={styles.avatarText}>
             {USER.name.charAt(0)}
@@ -65,7 +63,7 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.sinceText}>desde {USER.since}</Text>
           </View>
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Estadísticas del usuario */}
       <View style={styles.statsRow}>
@@ -188,8 +186,10 @@ export default function ProfileScreen({ navigation }) {
       </View>
 
       {/* Botón de cerrar sesión */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Cerrar Sesión</Text>
+      <TouchableOpacity onPress={handleLogout} style={styles.buttonWrapper}>
+        <LinearGradient colors={[colors.error, '#C62828']} style={styles.logoutButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+          <Text style={styles.logoutText}>Cerrar Sesión</Text>
+        </LinearGradient>
       </TouchableOpacity>
 
     </ScrollView>
@@ -205,14 +205,13 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    backgroundColor: colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 55,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    gap: 16,
+    flexDirection: 'row', alignItems: 'center',
+    paddingTop: 55, paddingBottom: 24, paddingHorizontal: 20, gap: 16,
+    overflow: 'hidden', position: 'relative',
   },
+  headerCircle: { position: 'absolute', borderRadius: 999, opacity: 0.1 },
+  headerCircle1: { width: 220, height: 220, backgroundColor: colors.secondary, top: -70, right: -50 },
+  headerCircle2: { width: 130, height: 130, backgroundColor: '#fff', top: 30, left: -30 },
   avatarContainer: {
     width: 64,
     height: 64,

@@ -1,32 +1,13 @@
-/**
- * LoginScreen.js
- * Pantalla de inicio de sesión conectada a la API de CafeSoft.
- */
-
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+  View, Text, TextInput, TouchableOpacity,
+  StyleSheet, ScrollView, Dimensions,
 } from 'react-native';
-
+import { LinearGradient } from 'expo-linear-gradient';
 import colors from '../theme/colors';
-import api from '../services/api';
 
+const { width, height } = Dimensions.get('window');
 const ROLES = ['Cliente', 'Administrador', 'Empleado'];
-
-const TIPOS_USUARIO = {
-  Administrador: 0,
-  Empleado: 1,
-  Cliente: 2,
-};
 
 export default function LoginScreen({ navigation }) {
   const [selectedRole, setSelectedRole] = useState('Cliente');
@@ -34,182 +15,89 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
-  const [cargando, setCargando] = useState(false);
 
-  const handleLogin = async () => {
-    const emailLimpio = email.trim().toLowerCase();
-    const passwordLimpia = password.trim();
-
-    if (!emailLimpio || !passwordLimpia) {
-      Alert.alert(
-        'Campos incompletos',
-        'Ingresa tu correo y contraseña.'
-      );
-      return;
-    }
-
-    setCargando(true);
-
-    try {
-      const respuesta = await api.post('/usuarios/login', {
-        email: emailLimpio,
-        password: passwordLimpia,
-      });
-
-      const usuario = respuesta.data?.usuario;
-
-      if (!usuario) {
-        Alert.alert(
-          'Error',
-          'La API no devolvió los datos del usuario.'
-        );
-        return;
-      }
-
-      const tipoSeleccionado = TIPOS_USUARIO[selectedRole];
-
-      if (usuario.userTipo !== tipoSeleccionado) {
-        Alert.alert(
-          'Rol incorrecto',
-          `Este usuario no está registrado como ${selectedRole}.`
-        );
-        return;
-      }
-
-      navigation.reset({
-        index: 0,
-        routes: [
-          {
-            name: 'Main',
-            params: {
-              usuario,
-            },
-          },
-        ],
-      });
-    } catch (error) {
-      console.error(
-        'Error al iniciar sesión:',
-        error.response?.data || error.message
-      );
-
-      if (error.response?.status === 400) {
-        Alert.alert(
-          'Datos inválidos',
-          error.response?.data?.error ||
-            'Revisa los datos ingresados.'
-        );
-      } else if (error.response?.status === 401) {
-        Alert.alert(
-          'Inicio de sesión fallido',
-          'Correo o contraseña incorrectos.'
-        );
-      } else if (error.response?.status === 403) {
-        Alert.alert(
-          'Acceso denegado',
-          'Tu usuario no tiene permiso para ingresar.'
-        );
-      } else if (!error.response) {
-        Alert.alert(
-          'Sin conexión',
-          'No se pudo conectar con la API. Revisa la IP, el Wi-Fi y que Spring Boot esté encendido.'
-        );
-      } else {
-        Alert.alert(
-          'Error',
-          error.response?.data?.error ||
-            'No se pudo iniciar sesión.'
-        );
-      }
-    } finally {
-      setCargando(false);
-    }
+  const handleLogin = () => {
+    navigation.navigate('Main');
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboardContainer}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.header}>
-          <View style={styles.iconContainer}>
-            <Text style={styles.iconText}>☕</Text>
-          </View>
+    <View style={styles.container}>
 
-          <Text style={styles.headerTitle}>CafeSoft</Text>
-          <Text style={styles.headerSubtitle}>
-            Inicia sesión para continuar
-          </Text>
+      {/* Fondo con gradiente — equivalente a background: linear-gradient en CSS */}
+      <LinearGradient
+        colors={['#3D1A00', '#6B3A1F', '#3D1A00']}
+        style={styles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+
+      {/* Círculos decorativos de fondo */}
+      <View style={[styles.decorCircle, styles.decorCircle1]} />
+      <View style={[styles.decorCircle, styles.decorCircle2]} />
+      <View style={[styles.decorCircle, styles.decorCircle3]} />
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Sección ilustrativa superior */}
+        <View style={styles.illustrationSection}>
+          <View style={styles.illustrationMain}>
+            <Text style={styles.illustrationEmoji}>☕</Text>
+          </View>
+          {/* Elementos flotantes decorativos */}
+          <View style={[styles.floatingEl, styles.floatingEl1]}>
+            <Text style={{ fontSize: 20 }}>✨</Text>
+          </View>
+          <View style={[styles.floatingEl, styles.floatingEl2]}>
+            <Text style={{ fontSize: 16 }}>🫘</Text>
+          </View>
+          <View style={[styles.floatingEl, styles.floatingEl3]}>
+            <Text style={{ fontSize: 18 }}>🍂</Text>
+          </View>
+          <Text style={styles.appName}>CafeSoft</Text>
+          <Text style={styles.appTagline}>Tu café favorito, donde quieras</Text>
         </View>
 
-        <View style={styles.formContainer}>
+        {/* Card del formulario con efecto glassmorphism */}
+        <View style={styles.formCard}>
+
           <Text style={styles.title}>Bienvenido de nuevo</Text>
+          <Text style={styles.subtitle}>Iniciá sesión para continuar</Text>
 
-          <Text style={styles.description}>
-            Ingresa tus datos para acceder al sistema.
-          </Text>
-
+          {/* Selector de rol */}
           <Text style={styles.label}>ROL DE ACCESO</Text>
-
           <TouchableOpacity
             style={styles.input}
-            onPress={() =>
-              setShowRoleDropdown(!showRoleDropdown)
-            }
-            disabled={cargando}
+            onPress={() => setShowRoleDropdown(!showRoleDropdown)}
+            activeOpacity={0.8}
           >
-            <Text style={styles.roleIndicator}>●</Text>
-
-            <Text style={styles.inputText}>
-              {selectedRole}
-            </Text>
-
-            <Text style={styles.dropdownArrow}>
-              {showRoleDropdown ? '▴' : '▾'}
-            </Text>
+            <View style={styles.roleDot} />
+            <Text style={styles.inputText}>{selectedRole}</Text>
+            <Text style={styles.dropdownArrow}>{showRoleDropdown ? '▴' : '▾'}</Text>
           </TouchableOpacity>
 
           {showRoleDropdown && (
             <View style={styles.dropdown}>
-              {ROLES.map((role) => (
+              {ROLES.map(role => (
                 <TouchableOpacity
                   key={role}
-                  style={[
-                    styles.dropdownItem,
-                    selectedRole === role &&
-                      styles.dropdownItemSelected,
-                  ]}
-                  onPress={() => {
-                    setSelectedRole(role);
-                    setShowRoleDropdown(false);
-                  }}
+                  style={[styles.dropdownItem, selectedRole === role && styles.dropdownItemActive]}
+                  onPress={() => { setSelectedRole(role); setShowRoleDropdown(false); }}
                 >
-                  <Text
-                    style={[
-                      styles.dropdownItemText,
-                      selectedRole === role &&
-                        styles.dropdownItemTextSelected,
-                    ]}
-                  >
+                  <Text style={[styles.dropdownText, selectedRole === role && styles.dropdownTextActive]}>
                     {role}
                   </Text>
+                  {selectedRole === role && <Text style={styles.checkIcon}>✓</Text>}
                 </TouchableOpacity>
               ))}
             </View>
           )}
 
-          <Text style={styles.label}>
-            CORREO ELECTRÓNICO
-          </Text>
-
+          {/* Email */}
+          <Text style={styles.label}>CORREO ELECTRÓNICO</Text>
           <View style={styles.input}>
-            <Text style={styles.inputIcon}>✉</Text>
-
+            <Text style={styles.inputIcon}>✉️</Text>
             <TextInput
               style={styles.textInput}
               placeholder="tu@correo.com"
@@ -218,310 +106,283 @@ export default function LoginScreen({ navigation }) {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
-              editable={!cargando}
-              returnKeyType="next"
             />
           </View>
 
+          {/* Contraseña */}
           <Text style={styles.label}>CONTRASEÑA</Text>
-
           <View style={styles.input}>
             <Text style={styles.inputIcon}>🔒</Text>
-
             <TextInput
               style={styles.textInput}
-              placeholder="Ingresa tu contraseña"
+              placeholder="••••••••"
               placeholderTextColor={colors.textSecondary}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="password"
-              editable={!cargando}
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
             />
-
-            <TouchableOpacity
-              onPress={() =>
-                setShowPassword(!showPassword)
-              }
-              disabled={cargando}
-            >
-              <Text style={styles.passwordIcon}>
-                {showPassword ? '🙈' : '👁'}
-              </Text>
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <Text style={styles.inputIcon}>{showPassword ? '🙈' : '👁️'}</Text>
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            style={styles.forgotPassword}
-            disabled={cargando}
-            onPress={() =>
-              Alert.alert(
-                'Recuperar contraseña',
-                'Esta opción todavía no está disponible.'
-              )
-            }
-          >
-            <Text style={styles.forgotPasswordText}>
-              ¿Olvidaste tu contraseña?
-            </Text>
+          <TouchableOpacity style={styles.forgotPassword}>
+            <Text style={styles.forgotPasswordText}>¿Olvidé mi contraseña?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              styles.loginButton,
-              cargando && styles.loginButtonDisabled,
-            ]}
-            onPress={handleLogin}
-            disabled={cargando}
-            activeOpacity={0.8}
-          >
-            {cargando ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator
-                  color={colors.textLight}
-                  size="small"
-                />
-
-                <Text style={styles.loginButtonText}>
-                  Iniciando sesión...
-                </Text>
-              </View>
-            ) : (
-              <Text style={styles.loginButtonText}>
-                Iniciar sesión
-              </Text>
-            )}
+          {/* Botón con gradiente */}
+          <TouchableOpacity onPress={handleLogin} activeOpacity={0.85} style={styles.buttonWrapper}>
+            <LinearGradient
+              colors={[colors.secondary, '#A0522D', colors.primary]}
+              style={styles.loginButton}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+              <Text style={styles.loginButtonArrow}>→</Text>
+            </LinearGradient>
           </TouchableOpacity>
 
+          {/* Link registro */}
           <View style={styles.registerLink}>
-            <Text style={styles.registerText}>
-              ¿No tienes cuenta?{' '}
-            </Text>
-
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate('Register')
-              }
-              disabled={cargando}
-            >
-              <Text style={styles.registerLinkText}>
-                Regístrate
-              </Text>
+            <Text style={styles.registerText}>¿No tienes cuenta? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <Text style={styles.registerLinkText}>Regístrate</Text>
             </TouchableOpacity>
           </View>
+
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  keyboardContainer: {
-    flex: 1,
-  },
-
-  scrollView: {
+  container: {
     flex: 1,
     backgroundColor: colors.primary,
   },
-
-  scrollContent: {
+  gradient: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+  },
+  // Círculos decorativos de fondo
+  decorCircle: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.15,
+  },
+  decorCircle1: {
+    width: 300, height: 300,
+    backgroundColor: '#C8763A',
+    top: -80, right: -80,
+  },
+  decorCircle2: {
+    width: 200, height: 200,
+    backgroundColor: '#3D1A00',
+    top: 100, left: -60,
+  },
+  decorCircle3: {
+    width: 150, height: 150,
+    backgroundColor: '#3D1A00',
+    top: 220, right: 20,
+  },
+  scroll: {
     flexGrow: 1,
+    paddingBottom: 40,
   },
-
-  header: {
-    backgroundColor: colors.primary,
+  // Sección ilustrativa
+  illustrationSection: {
     alignItems: 'center',
-    paddingTop: 55,
-    paddingBottom: 32,
-    paddingHorizontal: 24,
+    paddingTop: 70,
+    paddingBottom: 30,
+    position: 'relative',
   },
-
-  iconContainer: {
-    width: 68,
-    height: 68,
-    backgroundColor: colors.secondary,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-
-  iconText: {
-    fontSize: 34,
-  },
-
-  headerTitle: {
-    color: colors.textLight,
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-
-  headerSubtitle: {
-    color: colors.textLight,
-    fontSize: 14,
-    opacity: 0.85,
-  },
-
-  formContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    paddingHorizontal: 28,
-    paddingTop: 34,
-    paddingBottom: 36,
-  },
-
-  title: {
-    fontSize: 27,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 6,
-  },
-
-  description: {
-    fontSize: 14,
-    color: colors.textSecondary,
+  illustrationMain: {
+    width: 110, height: 110, borderRadius: 35,
+    backgroundColor: 'rgba(245, 166, 35, 0.3)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: 'rgba(245, 166, 35, 0.5)',
     marginBottom: 16,
   },
-
+  illustrationEmoji: {
+    fontSize: 56,
+  },
+  floatingEl: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
+    padding: 8,
+  },
+  floatingEl1: { top: 60, right: 60 },
+  floatingEl2: { top: 130, left: 50 },
+  floatingEl3: { top: 80, left: 80 },
+  appName: {
+    fontSize: 34,
+    fontWeight: 'bold',
+    color: colors.textLight,
+    letterSpacing: 2,
+  },
+  appTagline: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 4,
+  },
+  // Card del formulario
+  formCard: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    padding: 28,
+    paddingTop: 36,
+    // Sombra — equivalente a box-shadow en CSS
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.primary,
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 24,
+  },
   label: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.textSecondary,
-    letterSpacing: 1,
+    letterSpacing: 1.5,
     marginBottom: 8,
     marginTop: 16,
   },
-
   input: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: 16,
     paddingHorizontal: 16,
-    minHeight: 54,
+    paddingVertical: 14,
+    // Sombra suave en los inputs
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
-
+  roleDot: {
+    width: 10, height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.secondary,
+    marginRight: 10,
+  },
   inputIcon: {
     fontSize: 16,
     marginRight: 10,
-    color: colors.textSecondary,
   },
-
-  passwordIcon: {
-    fontSize: 18,
-    marginLeft: 10,
-  },
-
-  textInput: {
-    flex: 1,
-    fontSize: 15,
-    color: colors.textPrimary,
-    paddingVertical: 14,
-  },
-
   inputText: {
     flex: 1,
     fontSize: 15,
     color: colors.textPrimary,
+    fontWeight: '500',
   },
-
-  roleIndicator: {
-    color: colors.secondary,
-    marginRight: 10,
-    fontSize: 12,
+  textInput: {
+    flex: 1,
+    fontSize: 15,
+    color: colors.textPrimary,
   },
-
   dropdownArrow: {
     color: colors.textSecondary,
-    fontSize: 16,
+    fontSize: 14,
   },
-
   dropdown: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
+    backgroundColor: colors.white,
+    borderRadius: 16,
     marginTop: 6,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
-
   dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.background,
   },
-
-  dropdownItemSelected: {
-    backgroundColor: colors.background,
+  dropdownItemActive: {
+    backgroundColor: colors.surface,
   },
-
-  dropdownItemText: {
+  dropdownText: {
+    flex: 1,
     fontSize: 15,
     color: colors.textPrimary,
   },
-
-  dropdownItemTextSelected: {
-    fontWeight: 'bold',
+  dropdownTextActive: {
+    fontWeight: '700',
     color: colors.secondary,
   },
-
+  checkIcon: {
+    color: colors.secondary,
+    fontWeight: 'bold',
+  },
   forgotPassword: {
     alignSelf: 'flex-end',
     marginTop: 12,
-    marginBottom: 6,
+    marginBottom: 8,
   },
-
   forgotPasswordText: {
     color: colors.secondary,
     fontSize: 14,
     fontWeight: '600',
   },
-
+  buttonWrapper: {
+    marginTop: 20,
+    borderRadius: 18,
+    // Sombra del botón
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
+  },
   loginButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    minHeight: 54,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 18,
-  },
-
-  loginButtonDisabled: {
-    opacity: 0.7,
-  },
-
-  loadingContainer: {
+    borderRadius: 18,
+    paddingVertical: 17,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 10,
   },
-
   loginButtonText: {
-    color: colors.textLight,
-    fontSize: 16,
+    color: colors.white,
+    fontSize: 17,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  loginButtonArrow: {
+    color: colors.white,
+    fontSize: 18,
     fontWeight: 'bold',
   },
-
   registerLink: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 22,
+    marginTop: 24,
   },
-
   registerText: {
     color: colors.textSecondary,
     fontSize: 14,
   },
-
   registerLinkText: {
     color: colors.secondary,
     fontSize: 14,

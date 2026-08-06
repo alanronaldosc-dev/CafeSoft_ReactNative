@@ -4,22 +4,21 @@
 // 2. Carrito con método de pago (efectivo/tarjeta)
 // 3. Ticket de confirmación
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, FlatList, ScrollView, Image,
   ActivityIndicator, Alert,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import colors from '../theme/colors';
 import { useCart } from '../context/CartContext';
 import ProductoService from '../services/ProductoService';
 
 const IVA = 0.16;
-// ID de usuario fijo por ahora (cuando se integre auth, vendrá del contexto de sesión)
 const USUARIO_ID = 1;
-
-const BASE_URL = 'http://192.168.92.198:8080/api';
+const BASE_URL = 'http://192.168.100.6:8080/api';
 
 export default function CartScreen() {
   const { cartItems, addToCart, removeFromCart, deleteFromCart, totalItems, totalPrice } = useCart();
@@ -137,9 +136,11 @@ export default function CartScreen() {
   if (view === 'ticket' && ticket) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
+        <LinearGradient colors={['#3D1A00', '#6B3A1F']} style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <View style={[styles.headerCircle, styles.headerCircle1]} />
           <Text style={styles.headerTitle}>Ticket de Venta</Text>
-        </View>
+          <View style={{ width: 24 }} />
+        </LinearGradient>
         <ScrollView contentContainerStyle={styles.scroll}>
 
           {/* Encabezado del ticket */}
@@ -207,8 +208,10 @@ export default function CartScreen() {
             <Text style={styles.ticketGracias}>¡Gracias por tu compra!</Text>
           </View>
 
-          <TouchableOpacity style={styles.nuevaVentaButton} onPress={handleNuevaVenta}>
-            <Text style={styles.nuevaVentaButtonText}>Nueva Venta</Text>
+          <TouchableOpacity onPress={handleNuevaVenta} style={styles.buttonWrapper}>
+            <LinearGradient colors={[colors.secondary, '#A0522D', colors.primary]} style={styles.nuevaVentaButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <Text style={styles.nuevaVentaButtonText}>Nueva Venta</Text>
+            </LinearGradient>
           </TouchableOpacity>
 
         </ScrollView>
@@ -220,7 +223,8 @@ export default function CartScreen() {
   if (view === 'cart') {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
+        <LinearGradient colors={['#3D1A00', '#6B3A1F']} style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <View style={[styles.headerCircle, styles.headerCircle1]} />
           <TouchableOpacity onPress={() => setView('catalog')}>
             <Text style={styles.backButton}>←</Text>
           </TouchableOpacity>
@@ -228,7 +232,7 @@ export default function CartScreen() {
           <View style={styles.cartIconContainer}>
             <Text style={styles.cartIcon}>🛒</Text>
           </View>
-        </View>
+        </LinearGradient>
 
         <ScrollView contentContainerStyle={styles.scroll}>
           {cartItems.length === 0 ? (
@@ -350,17 +354,17 @@ export default function CartScreen() {
 
               {/* Botón confirmar */}
               <TouchableOpacity
-                style={[styles.checkoutButton, loadingVenta && { opacity: 0.6 }]}
                 onPress={handleConfirmarVenta}
                 disabled={loadingVenta}
+                style={[styles.buttonWrapper, loadingVenta && { opacity: 0.6 }]}
               >
-                {loadingVenta ? (
-                  <ActivityIndicator color={colors.white} />
-                ) : (
-                  <Text style={styles.checkoutButtonText}>
-                    Confirmar Venta → ${total.toFixed(2)} MXN
-                  </Text>
-                )}
+                <LinearGradient colors={[colors.secondary, '#A0522D', colors.primary]} style={styles.checkoutButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                  {loadingVenta ? (
+                    <ActivityIndicator color={colors.white} />
+                  ) : (
+                    <Text style={styles.checkoutButtonText}>Confirmar Venta → ${total.toFixed(2)} MXN</Text>
+                  )}
+                </LinearGradient>
               </TouchableOpacity>
             </>
           )}
@@ -372,7 +376,8 @@ export default function CartScreen() {
   // ─── VISTA: CATÁLOGO ──────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <LinearGradient colors={['#3D1A00', '#6B3A1F']} style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+        <View style={[styles.headerCircle, styles.headerCircle1]} />
         <Text style={styles.headerTitle}>Catálogo</Text>
         <TouchableOpacity style={styles.cartIconContainer} onPress={() => setView('cart')}>
           <Text style={styles.cartIcon}>🛒</Text>
@@ -382,7 +387,7 @@ export default function CartScreen() {
             </View>
           )}
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       {/* Buscador */}
       <View style={styles.searchContainer}>
@@ -459,10 +464,12 @@ export default function CartScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
-    backgroundColor: colors.primary,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingTop: 55, paddingBottom: 16, paddingHorizontal: 20,
+    overflow: 'hidden', position: 'relative',
   },
+  headerCircle: { position: 'absolute', borderRadius: 999, opacity: 0.1 },
+  headerCircle1: { width: 200, height: 200, backgroundColor: colors.secondary, top: -60, right: -40 },
   headerTitle: { color: colors.textLight, fontSize: 22, fontWeight: 'bold' },
   backButton: { color: colors.textLight, fontSize: 24 },
   cartIconContainer: { position: 'relative', padding: 4 },
@@ -471,19 +478,25 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 0, right: 0,
     backgroundColor: colors.secondary, borderRadius: 10,
     minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: colors.background,
   },
   badgeText: { color: colors.white, fontSize: 11, fontWeight: 'bold' },
   searchContainer: { backgroundColor: colors.primary, paddingHorizontal: 20, paddingBottom: 20 },
   searchBox: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: colors.surface, borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 16,
     paddingHorizontal: 14, paddingVertical: 10,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
   searchIcon: { fontSize: 16, marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 15, color: colors.textPrimary },
+  searchInput: { flex: 1, fontSize: 15, color: colors.white },
   productList: { padding: 16, paddingBottom: 20 },
   row: { justifyContent: 'space-between', marginBottom: 16 },
-  productCard: { width: '48%', backgroundColor: colors.white, borderRadius: 16, overflow: 'hidden' },
+  productCard: {
+    width: '48%', backgroundColor: colors.white, borderRadius: 18, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08, shadowRadius: 10, elevation: 3,
+  },
   productImage: { width: '100%', height: 120 },
   productImagePlaceholder: {
     width: '100%', height: 120,
@@ -494,16 +507,19 @@ const styles = StyleSheet.create({
   productName: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, marginBottom: 8 },
   productFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   productPrice: { fontSize: 12, fontWeight: 'bold', color: colors.secondary },
-  addButton: {
-    width: 28, height: 28, backgroundColor: colors.primary,
-    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+  addButtonWrapper: {
+    borderRadius: 12, shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4,
   },
-  addButtonText: { color: colors.white, fontSize: 18, fontWeight: 'bold', lineHeight: 22 },
+  addButton: { width: 30, height: 30, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  addButtonText: { color: colors.white, fontSize: 20, fontWeight: 'bold', lineHeight: 24 },
   // Carrito
   scroll: { padding: 20, paddingBottom: 40 },
   cartItem: {
-    backgroundColor: colors.white, borderRadius: 16, padding: 14,
+    backgroundColor: colors.white, borderRadius: 18, padding: 14,
     flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07, shadowRadius: 10, elevation: 3,
   },
   cartItemImage: { width: 64, height: 64, borderRadius: 12 },
   cartItemImagePlaceholder: {
@@ -524,7 +540,11 @@ const styles = StyleSheet.create({
   cartItemRight: { alignItems: 'flex-end', gap: 8 },
   deleteIcon: { fontSize: 20 },
   cartItemTotal: { fontSize: 15, fontWeight: 'bold', color: colors.textPrimary },
-  summaryCard: { backgroundColor: colors.white, borderRadius: 16, padding: 16, marginBottom: 16 },
+  summaryCard: {
+    backgroundColor: colors.white, borderRadius: 18, padding: 16, marginBottom: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+  },
   summaryTitle: { fontSize: 16, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 12 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   summaryLabel: { fontSize: 14, color: colors.textSecondary },
@@ -533,7 +553,11 @@ const styles = StyleSheet.create({
   totalLabel: { fontSize: 16, fontWeight: 'bold', color: colors.textPrimary },
   totalValue: { fontSize: 16, fontWeight: 'bold', color: colors.secondary },
   // Pago
-  pagoCard: { backgroundColor: colors.white, borderRadius: 16, padding: 16, marginBottom: 16 },
+  pagoCard: {
+    backgroundColor: colors.white, borderRadius: 18, padding: 16, marginBottom: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+  },
   pagoTitle: { fontSize: 15, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 12 },
   pagoOptions: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   pagoOption: {
@@ -561,13 +585,14 @@ const styles = StyleSheet.create({
   cambioLabel: { fontSize: 14, color: colors.textSecondary },
   cambioValue: { fontSize: 15, fontWeight: 'bold', color: colors.success },
   checkoutButton: {
-    backgroundColor: colors.primary, borderRadius: 14,
-    paddingVertical: 16, alignItems: 'center',
+    borderRadius: 18, paddingVertical: 17,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
   },
-  checkoutButtonText: { color: colors.textLight, fontSize: 16, fontWeight: 'bold' },
-  // Ticket
+  checkoutButtonText: { color: colors.white, fontSize: 16, fontWeight: 'bold' },
   ticketCard: {
-    backgroundColor: colors.white, borderRadius: 16, padding: 20, marginBottom: 20,
+    backgroundColor: colors.white, borderRadius: 20, padding: 20, marginBottom: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1, shadowRadius: 12, elevation: 5,
   },
   ticketLogo: { fontSize: 22, fontWeight: 'bold', color: colors.primary, textAlign: 'center', marginBottom: 4 },
   ticketFolio: { fontSize: 16, fontWeight: '600', color: colors.textPrimary, textAlign: 'center' },
@@ -583,10 +608,14 @@ const styles = StyleSheet.create({
   ticketTotalValue: { fontSize: 16, fontWeight: 'bold', color: colors.secondary },
   ticketGracias: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginTop: 8 },
   nuevaVentaButton: {
-    backgroundColor: colors.primary, borderRadius: 14,
-    paddingVertical: 16, alignItems: 'center',
+    borderRadius: 18, paddingVertical: 17,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
   },
   nuevaVentaButtonText: { color: colors.white, fontSize: 16, fontWeight: 'bold' },
+  buttonWrapper: {
+    borderRadius: 18, shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 8,
+  },
   // Estados
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   loadingText: { marginTop: 12, color: colors.textSecondary },
