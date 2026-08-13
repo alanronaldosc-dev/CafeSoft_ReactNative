@@ -1,3 +1,8 @@
+// ============================================
+// HU-008 - INICIO DE SESION MOVIL
+// Gestiona el acceso de los usuarios desde
+// la aplicacion movil de CafeSoft.
+// ============================================
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
