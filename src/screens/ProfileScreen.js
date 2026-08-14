@@ -527,3 +527,4 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
 });
+// HU-010: Cierre de sesión seguro implementado
