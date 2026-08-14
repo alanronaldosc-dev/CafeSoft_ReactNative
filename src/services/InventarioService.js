@@ -2,7 +2,7 @@
 // Comunicación con /api/inventario
 // El inventario es la fuente de insumos disponibles para los productos
 
-import { BASE_URL } from '../config/api';
+const BASE_URL = 'http://192.168.100.6:8080/api';
 
 const headers = {
   'Content-Type': 'application/json',

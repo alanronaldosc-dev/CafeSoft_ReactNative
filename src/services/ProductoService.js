@@ -2,7 +2,7 @@
 // Comunicación con /api/productos
 // Los productos usan insumos del inventario (no de /api/insumos)
 
-import { BASE_URL } from '../config/api';
+const BASE_URL = 'http://192.168.100.6:8080/api';
 
 const headers = {
   'Content-Type': 'application/json',
