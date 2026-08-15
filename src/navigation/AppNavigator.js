@@ -19,6 +19,9 @@ import ProductoFormScreen from '../screens/ProductoFormScreen';
 import CategoriasListScreen from '../screens/CategoriasListScreen';
 import CategoriaFormScreen from '../screens/CategoriaFormScreen';
 
+// HU-013 - PROVEEDORES
+import ProveedoresListScreen from '../screens/ProveedoresListScreen';
+import ProveedorFormScreen from '../screens/ProveedorFormScreen';
 
 import colors from '../theme/colors';
 
@@ -35,14 +38,49 @@ function MainTabs() {
         headerShown: false,
       }}
     >
-      <Tab.Screen name="Home" component={HomeScreen}
-        options={{ tabBarLabel: 'Inicio', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>🏠</Text> }} />
-      <Tab.Screen name="Cart" component={CartScreen}
-        options={{ tabBarLabel: 'Carrito', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>🛒</Text> }} />
-      <Tab.Screen name="Actions" component={ActionsScreen}
-        options={{ tabBarLabel: 'Acciones', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>⚙️</Text> }} />
-      <Tab.Screen name="Profile" component={ProfileScreen}
-        options={{ tabBarLabel: 'Perfil', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>👤</Text> }} />
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          tabBarLabel: 'Inicio',
+          tabBarIcon: ({ color }) => (
+            <Text style={{ color, fontSize: 20 }}>🏠</Text>
+          ),
+        }}
+      />
+
+      <Tab.Screen
+        name="Cart"
+        component={CartScreen}
+        options={{
+          tabBarLabel: 'Carrito',
+          tabBarIcon: ({ color }) => (
+            <Text style={{ color, fontSize: 20 }}>🛒</Text>
+          ),
+        }}
+      />
+
+      <Tab.Screen
+        name="Actions"
+        component={ActionsScreen}
+        options={{
+          tabBarLabel: 'Acciones',
+          tabBarIcon: ({ color }) => (
+            <Text style={{ color, fontSize: 20 }}>⚙️</Text>
+          ),
+        }}
+      />
+
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: 'Perfil',
+          tabBarIcon: ({ color }) => (
+            <Text style={{ color, fontSize: 20 }}>👤</Text>
+          ),
+        }}
+      />
     </Tab.Navigator>
   );
 }
@@ -50,18 +88,75 @@ function MainTabs() {
 export default function AppNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
-        <Stack.Screen name="Main" component={MainTabs} />
-        <Stack.Screen name="InsumosList" component={InsumosListScreen} />
-        <Stack.Screen name="InsumoForm" component={InsumoFormScreen} />
-        <Stack.Screen name="LotesList" component={LotesListScreen} />
-        <Stack.Screen name="LoteForm" component={LoteFormScreen} />
-        <Stack.Screen name="ProductosList" component={ProductosListScreen} />
-        <Stack.Screen name="ProductoForm" component={ProductoFormScreen} />
-        <Stack.Screen name="CategoriasList" component={CategoriasListScreen} />
-        <Stack.Screen name="CategoriaForm" component={CategoriaFormScreen} />
+      <Stack.Navigator
+        initialRouteName="Login"
+        screenOptions={{ headerShown: false }}
+      >
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+        />
+
+        <Stack.Screen
+          name="Register"
+          component={RegisterScreen}
+        />
+
+        <Stack.Screen
+          name="Main"
+          component={MainTabs}
+        />
+
+        <Stack.Screen
+          name="InsumosList"
+          component={InsumosListScreen}
+        />
+
+        <Stack.Screen
+          name="InsumoForm"
+          component={InsumoFormScreen}
+        />
+
+        <Stack.Screen
+          name="LotesList"
+          component={LotesListScreen}
+        />
+
+        <Stack.Screen
+          name="LoteForm"
+          component={LoteFormScreen}
+        />
+
+        <Stack.Screen
+          name="ProductosList"
+          component={ProductosListScreen}
+        />
+
+        <Stack.Screen
+          name="ProductoForm"
+          component={ProductoFormScreen}
+        />
+
+        <Stack.Screen
+          name="CategoriasList"
+          component={CategoriasListScreen}
+        />
+
+        <Stack.Screen
+          name="CategoriaForm"
+          component={CategoriaFormScreen}
+        />
+
+        {/* HU-013 - PROVEEDORES */}
+        <Stack.Screen
+          name="ProveedoresList"
+          component={ProveedoresListScreen}
+        />
+
+        <Stack.Screen
+          name="ProveedorForm"
+          component={ProveedorFormScreen}
+        />
 
       </Stack.Navigator>
     </NavigationContainer>
