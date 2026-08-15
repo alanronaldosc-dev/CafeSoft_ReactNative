@@ -13,9 +13,11 @@ const FEATURED = [
   { id: '3', name: 'Cold Brew 24h', price: 75, emoji: '🧊' },
 ];
 
+
 const NEWS = [
   { id: '1', title: 'Nueva carta de temporada', desc: 'Descubrí nuestros sabores de otoño', emoji: '🍂' },
   { id: '2', title: 'Programa de puntos', desc: 'Acumulá puntos con cada compra', emoji: '⭐' },
+  // HU-014: Ejemplo dem comunicación de horarios disponibles para los usuarios.
   { id: '3', title: 'Horario extendido', desc: 'Ahora abrimos hasta las 22hs', emoji: '🕙' },
 ];
 
