@@ -61,6 +61,7 @@ export default function UserManagementScreen({ navigation }) {
       ]
     );
   };
+// HU-012: Panel para suspender o reactivar cuentas de empleados
 
   // Cambiar estado (Activar/Desactivar)
   const handleToggleStatus = (userId, currentStatus) => {
