@@ -1,8 +1,15 @@
 // ============================================
+// HU-007 - RESTABLECIMIENTO DE CONTRASEÑA MÓVIL
+// Permite al usuario recuperar su acceso mediante
+// envío de código o enlace temporal al correo.
+// ============================================
+
+// ============================================
 // HU-008 - INICIO DE SESION MOVIL
 // Gestiona el acceso de los usuarios desde
 // la aplicacion movil de CafeSoft.
 // ============================================
+
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
