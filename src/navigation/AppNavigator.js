@@ -20,6 +20,7 @@ import CategoriasListScreen from '../screens/CategoriasListScreen';
 import UserManagementScreen from "../screens/UserManagementScreen";
 import CategoriaFormScreen from '../screens/CategoriaFormScreen';
 import GestionEmpleadosScreen from '../screens/GestionEmpleadosScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 
 import colors from '../theme/colors';
 
