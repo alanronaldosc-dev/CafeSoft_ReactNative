@@ -34,12 +34,12 @@ export default function GestionEmpleadosScreen() {
       setEmpleados(data);
 
     } catch (error) {
+      console.error(error);
 
       Alert.alert(
         'Error',
-        'No fue posible obtener los empleados.'
+        'No fue posible cargar los empleados.'
       );
-
     } finally {
       setLoading(false);
     }
@@ -51,15 +51,19 @@ export default function GestionEmpleadosScreen() {
 
     try {
 
-      // Actualización visual inmediata
+      // Cambiamos visualmente el switch
       setEmpleados(actuales =>
         actuales.map(item =>
           item.id === empleado.id
-            ? { ...item, activo: nuevoEstado }
+            ? {
+                ...item,
+                activo: nuevoEstado,
+              }
             : item
         )
       );
 
+      // Guardamos el cambio en Spring Boot
       await cambiarEstadoEmpleado(
         empleado.id,
         nuevoEstado
@@ -67,11 +71,16 @@ export default function GestionEmpleadosScreen() {
 
     } catch (error) {
 
-      // Si falla, regresamos al estado anterior
+      console.error(error);
+
+      // Si falla la API, regresamos al estado anterior
       setEmpleados(actuales =>
         actuales.map(item =>
           item.id === empleado.id
-            ? { ...item, activo: empleado.activo }
+            ? {
+                ...item,
+                activo: empleado.activo,
+              }
             : item
         )
       );
@@ -86,7 +95,7 @@ export default function GestionEmpleadosScreen() {
   const renderEmpleado = ({ item }) => (
     <View style={styles.card}>
 
-      <View style={styles.info}>
+      <View style={styles.employeeInfo}>
 
         <Text style={styles.nombre}>
           {item.nombre}
@@ -100,11 +109,11 @@ export default function GestionEmpleadosScreen() {
           style={[
             styles.estado,
             item.activo
-              ? styles.activo
-              : styles.inactivo
+              ? styles.estadoActivo
+              : styles.estadoInactivo,
           ]}
         >
-          {item.activo ? 'Activo' : 'Inactivo'}
+          {item.activo ? '● Activo' : '● Inactivo'}
         </Text>
 
       </View>
@@ -119,17 +128,25 @@ export default function GestionEmpleadosScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" />
+      <View style={styles.loadingContainer}>
+
+        <ActivityIndicator
+          size="large"
+          color={colors.secondary}
+        />
+
         <Text style={styles.loadingText}>
           Cargando empleados...
         </Text>
+
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+
+      {/* ENCABEZADO */}
 
       <View style={styles.header}>
 
@@ -138,20 +155,33 @@ export default function GestionEmpleadosScreen() {
         </Text>
 
         <Text style={styles.subtitle}>
-          Activa o desactiva el acceso al punto de venta
+          Controla quién tiene acceso al punto de venta
         </Text>
 
       </View>
 
+      {/* LISTA */}
+
       <FlatList
         data={empleados}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) =>
+          item.id.toString()
+        }
         renderItem={renderEmpleado}
         contentContainerStyle={styles.list}
+
         ListEmptyComponent={
-          <Text style={styles.empty}>
-            No hay empleados registrados.
-          </Text>
+          <View style={styles.emptyContainer}>
+
+            <Text style={styles.emptyIcon}>
+              👥
+            </Text>
+
+            <Text style={styles.emptyText}>
+              No hay empleados registrados.
+            </Text>
+
+          </View>
         }
       />
 
@@ -167,8 +197,9 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    padding: 24,
-    paddingTop: 50,
+    paddingHorizontal: 24,
+    paddingTop: 55,
+    paddingBottom: 20,
   },
 
   title: {
@@ -178,14 +209,14 @@ const styles = StyleSheet.create({
   },
 
   subtitle: {
-    marginTop: 6,
+    marginTop: 7,
     fontSize: 14,
     color: colors.textSecondary,
   },
 
   list: {
-    padding: 20,
-    paddingTop: 0,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
   },
 
   card: {
@@ -193,6 +224,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 18,
     marginBottom: 12,
+
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -207,7 +239,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
-  info: {
+  employeeInfo: {
     flex: 1,
     marginRight: 15,
   },
@@ -230,15 +262,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 
-  activo: {
+  estadoActivo: {
     color: 'green',
   },
 
-  inactivo: {
+  estadoInactivo: {
     color: 'red',
   },
 
-  loading: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -247,12 +279,22 @@ const styles = StyleSheet.create({
 
   loadingText: {
     marginTop: 10,
+    fontSize: 14,
     color: colors.textSecondary,
   },
 
-  empty: {
-    textAlign: 'center',
-    marginTop: 40,
+  emptyContainer: {
+    alignItems: 'center',
+    marginTop: 70,
+  },
+
+  emptyIcon: {
+    fontSize: 45,
+    marginBottom: 10,
+  },
+
+  emptyText: {
+    fontSize: 15,
     color: colors.textSecondary,
   },
 
