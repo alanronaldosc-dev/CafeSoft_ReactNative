@@ -82,20 +82,8 @@ export default function ProductosListScreen({ navigation }) {
 
   // Obtiene la categoría aunque la API utilice diferentes estructuras.
   const getCategoria = (producto) => {
-    if (producto.categoria?.nombre) {
-      return producto.categoria.nombre;
-    }
-
-    if (producto.categoriaNombre) {
-      return producto.categoriaNombre;
-    }
-
-    if (typeof producto.categoria === 'string') {
-      return producto.categoria;
-    }
-
-    return 'Sin categoría';
-  };
+  return producto.categoriaNombre || 'Sin categoría';
+};
 
   const renderItem = ({ item }) => {
     const categoria = getCategoria(item);
