@@ -73,7 +73,9 @@ export default function InsumosListScreen({ navigation }) {
         <Text style={styles.itemName}>{item.nombre}</Text>
         <Text style={styles.itemDetail}>Tipo: {item.tipo}</Text>
         <Text style={styles.itemDetail}>Unidad: {item.unidadMedida}</Text>
-        <Text style={styles.itemDetail}>Proveedor: {item.proveedor}</Text>
+        <Text style={styles.itemDetail}>
+  Proveedor: {item.proveedorNombre || item.proveedor || '—'}
+</Text>
         <Text style={styles.itemPrice}>${item.precio} MXN</Text>
       </View>
       <View style={styles.itemActions}>

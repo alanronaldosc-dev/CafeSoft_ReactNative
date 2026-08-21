@@ -79,6 +79,9 @@ export default function LotesListScreen({ navigation }) {
           <Text style={styles.deleteText}>Eliminar</Text>
         </TouchableOpacity>
       </View>
+      {item.proveedorNombre ? (
+  <Text style={styles.proveedorLabel}>🏢 {item.proveedorNombre}</Text>
+) : null}
 
       {/* Detalle del lote */}
       <View style={styles.itemDetails}>
@@ -338,4 +341,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.textSecondary,
   },
+  proveedorLabel: {
+  fontSize: 13,
+  color: colors.textSecondary,
+  marginHorizontal: 16,
+  marginBottom: 4,
+},
 });
