@@ -19,14 +19,10 @@ export default function LoginScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
 
-  const handleLogin = async () => {
-  if (!email.trim() || !password.trim()) {
-    Alert.alert(
-      'Campos obligatorios',
-      'Ingresa tu correo y contraseña.'
-    );
-    return;
-  }
+  <Stack.Screen
+  name="GestionEmpleados"
+  component={GestionEmpleadosScreen}
+/>
 
   try {
     const response = await axios.post(
