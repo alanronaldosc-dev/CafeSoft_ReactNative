@@ -19,6 +19,9 @@ import ProductoFormScreen from '../screens/ProductoFormScreen';
 import CategoriasListScreen from '../screens/CategoriasListScreen';
 import CategoriaFormScreen from '../screens/CategoriaFormScreen';
 
+// 007
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 // HU-013 - PROVEEDORES
 import ProveedoresListScreen from '../screens/ProveedoresListScreen';
 import ProveedorFormScreen from '../screens/ProveedorFormScreen';
@@ -146,6 +149,24 @@ export default function AppNavigator() {
           name="CategoriaForm"
           component={CategoriaFormScreen}
         />
+
+
+        //007
+            <Stack.Screen
+        name="ForgotPassword"
+        component={ForgotPasswordScreen}
+        options={{
+            headerShown: false,
+        }}
+    />
+    
+    <Stack.Screen
+        name="ResetPassword"
+        component={ResetPasswordScreen}
+        options={{
+            headerShown: false,
+        }}
+    />
 
         {/* HU-013 - PROVEEDORES */}
         <Stack.Screen
