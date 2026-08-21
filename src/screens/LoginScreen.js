@@ -5,6 +5,9 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import colors from '../theme/colors';
+import axios from 'axios';
+import { Alert } from 'react-native';
+import { API_URL } from '../config/api';
 
 const { width, height } = Dimensions.get('window');
 const ROLES = ['Cliente', 'Administrador', 'Empleado'];
@@ -16,9 +19,48 @@ export default function LoginScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
 
-  const handleLogin = () => {
-    navigation.navigate('Main');
-  };
+  const handleLogin = async () => {
+  if (!email.trim() || !password.trim()) {
+    Alert.alert(
+      'Campos obligatorios',
+      'Ingresa tu correo y contraseña.'
+    );
+    return;
+  }
+
+  try {
+    const response = await axios.post(
+      `${API_URL}/api/usuarios/login`,
+      {
+        email: email.trim().toLowerCase(),
+        password: password,
+      }
+    );
+
+    const usuario = response.data.usuario;
+
+    console.log('Usuario autenticado:', usuario);
+
+    navigation.navigate('Main', {
+      usuario: usuario,
+    });
+
+  } catch (error) {
+    console.error(
+      'Error de login:',
+      error.response?.data || error.message
+    );
+
+    const mensaje =
+      error.response?.data?.error ||
+      'No fue posible iniciar sesión.';
+
+    Alert.alert(
+      'No se puede iniciar sesión',
+      mensaje
+    );
+  }
+};
 
   return (
     <View style={styles.container}>
