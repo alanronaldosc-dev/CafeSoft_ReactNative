@@ -70,6 +70,15 @@ export default function HomeScreen() {
             <Text style={styles.bannerSub}>Pedí desde la app y retirá sin esperas</Text>
           </View>
         </LinearGradient>
+<TouchableOpacity
+  onPress={() =>
+    navigation.navigate('GestionEmpleados')
+  }
+>
+  <Text>
+    Gestionar empleados
+  </Text>
+</TouchableOpacity>
 
         {/* Estadísticas */}
         <View style={styles.statsRow}>
