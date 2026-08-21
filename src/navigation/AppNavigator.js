@@ -17,6 +17,7 @@ import LoteFormScreen from '../screens/LoteFormScreen';
 import ProductosListScreen from '../screens/ProductosListScreen';
 import ProductoFormScreen from '../screens/ProductoFormScreen';
 import CategoriasListScreen from '../screens/CategoriasListScreen';
+import UserManagementScreen from "../screens/UserManagementScreen";
 import CategoriaFormScreen from '../screens/CategoriaFormScreen';
 
 
@@ -61,6 +62,7 @@ export default function AppNavigator() {
         <Stack.Screen name="ProductosList" component={ProductosListScreen} />
         <Stack.Screen name="ProductoForm" component={ProductoFormScreen} />
         <Stack.Screen name="CategoriasList" component={CategoriasListScreen} />
+        <Stack.Screen name="UserManagement" component={UserManagementScreen} />
         <Stack.Screen name="CategoriaForm" component={CategoriaFormScreen} />
 
       </Stack.Navigator>
