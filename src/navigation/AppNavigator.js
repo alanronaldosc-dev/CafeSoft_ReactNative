@@ -19,7 +19,7 @@ import ProductoFormScreen from '../screens/ProductoFormScreen';
 import CategoriasListScreen from '../screens/CategoriasListScreen';
 import UserManagementScreen from "../screens/UserManagementScreen";
 import CategoriaFormScreen from '../screens/CategoriaFormScreen';
-
+import GestionEmpleadosScreen from '../screens/GestionEmpleadosScreen';
 
 import colors from '../theme/colors';
 
@@ -64,6 +64,10 @@ export default function AppNavigator() {
         <Stack.Screen name="CategoriasList" component={CategoriasListScreen} />
         <Stack.Screen name="UserManagement" component={UserManagementScreen} />
         <Stack.Screen name="CategoriaForm" component={CategoriaFormScreen} />
+  <Stack.Screen
+  name="GestionEmpleados"
+  component={GestionEmpleadosScreen}
+/>
 
       </Stack.Navigator>
     </NavigationContainer>
