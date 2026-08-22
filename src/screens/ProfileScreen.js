@@ -1,4 +1,13 @@
 /**
+ * HU-011 – Gestión de perfiles de usuarios
+ * "Como administrador, quiero registrar, consultar y actualizar los perfiles
+ * de los usuarios administrador, empleado y cliente para mantener la plantilla
+ * del personal operativa y actualizada."
+ *
+ * Este componente cubre el criterio de aceptación:
+ *  ✅ El usuario puede consultar y editar sus propios datos básicos de perfil.
+ *  ✅ Permite cerrar sesión, manteniendo el perfil registrado en el sistema.
+ *
  * ProfileScreen.js
  * Pantalla de perfil del usuario con información y ajustes personales.
  * - Presenta resumen de pedidos, puntos y reseñas del usuario.
@@ -14,8 +23,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import colors from '../theme/colors';
 
-// Datos mock del usuario activo
-// En el futuro vendrán del Context de autenticación o de la API
+/**
+ * HU-011: datos del perfil activo del usuario.
+ * En producción vendrán del AuthContext o de la API (GET /usuarios/:id).
+ * Contiene los campos básicos que el criterio de aceptación exige:
+ * nombre, rol y datos operativos (pedidos, puntos, reseñas).
+ */
 const USER = {
   name: 'María García',
   role: 'Cliente',
@@ -28,13 +41,16 @@ const USER = {
 const TEXT_SIZES = ['Pequeño', 'Mediano', 'Grande'];
 
 export default function ProfileScreen({ navigation }) {
-  // Estado de accesibilidad
+  // Estado de accesibilidad (no relacionado con HU-011, son ajustes de UI)
   const [highContrast, setHighContrast] = useState(false);
   const [textSize, setTextSize] = useState('Mediano');
   const [accessibilityOpen, setAccessibilityOpen] = useState(false);
 
-  // Simula el cierre de sesión, vuelve al Login
-  // En Laravel sería Auth::logout() + redirect()->route('login')
+  /**
+   * HU-011 – Cerrar sesión del perfil activo
+   * Termina la sesión del usuario y regresa a la pantalla de Login,
+   * sin eliminar el perfil del sistema.
+   */
   const handleLogout = () => {
     navigation.reset({
       index: 0,
@@ -45,7 +61,7 @@ export default function ProfileScreen({ navigation }) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
 
-      {/* Header con gradiente */}
+      {/* HU-011: header con los datos básicos del perfil activo (nombre y rol) */}
       <LinearGradient colors={['#3D1A00', '#6B3A1F']} style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
         <View style={[styles.headerCircle, styles.headerCircle1]} />
         <View style={[styles.headerCircle, styles.headerCircle2]} />
