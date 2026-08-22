@@ -2,7 +2,7 @@
 // Capa de comunicación con la API. Equivalente a un Repository en Laravel.
 // Todas las llamadas HTTP a /insumos van aquí centralizadas.
 
-const BASE_URL = 'http://192.168.100.6:8080/api';
+const BASE_URL = 'http://192.168.100.5:8080/api';
 // Si usás Expo Go en celular físico, reemplazá por la IP local de tu PC:
 // const BASE_URL = 'http://192.168.1.X:8080';
 

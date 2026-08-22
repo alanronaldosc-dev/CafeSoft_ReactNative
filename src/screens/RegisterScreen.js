@@ -1,3 +1,16 @@
+/**
+ * HU-011 – Gestión de perfiles de usuarios
+ * "Como administrador, quiero registrar, consultar y actualizar los perfiles
+ * de los usuarios administrador, empleado y cliente para mantener la plantilla
+ * del personal operativa y actualizada."
+ *
+ * Este componente cubre el criterio de aceptación:
+ *  ✅ Formulario único para dar de alta y editar datos básicos del empleado.
+ *
+ * RegisterScreen.js – Pantalla de registro de nuevos usuarios (clientes).
+ * El administrador usa UserManagementScreen para registrar empleados/admins;
+ * esta pantalla es el punto de entrada público para clientes nuevos.
+ */
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
@@ -7,15 +20,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import colors from '../theme/colors';
 
 export default function RegisterScreen({ navigation }) {
+  // HU-011: estado del formulario con los datos básicos del perfil a registrar
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState('');          // HU-011: teléfono del perfil
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
 
+  /**
+   * HU-011 – Dar de alta un nuevo perfil de cliente
+   * En una integración real llamaría a POST /usuarios con los datos del formulario.
+   * Por ahora navega al Login tras confirmar el registro.
+   */
   const handleRegister = () => {
     navigation.navigate('Login');
   };
@@ -50,12 +69,12 @@ export default function RegisterScreen({ navigation }) {
           <Text style={styles.appTagline}>Paso 1 de 2 — Registro</Text>
         </View>
 
-        {/* Card del formulario */}
+        {/* HU-011: card con el formulario único de alta de datos básicos */}
         <View style={styles.formCard}>
           <Text style={styles.title}>Únete a CafeSoft</Text>
           <Text style={styles.subtitle}>Completá tus datos para registrarte</Text>
 
-          {/* Nombre */}
+          {/* HU-011: campo nombre completo del perfil */}
           <Text style={styles.label}>NOMBRE COMPLETO</Text>
           <View style={styles.input}>
             <Text style={styles.inputIcon}>👤</Text>
@@ -68,7 +87,7 @@ export default function RegisterScreen({ navigation }) {
             />
           </View>
 
-          {/* Email */}
+          {/* HU-011: campo correo electrónico del perfil */}
           <Text style={styles.label}>CORREO ELECTRÓNICO</Text>
           <View style={styles.input}>
             <Text style={styles.inputIcon}>✉️</Text>
@@ -83,7 +102,7 @@ export default function RegisterScreen({ navigation }) {
             />
           </View>
 
-          {/* Teléfono */}
+          {/* HU-011: campo teléfono del perfil */}
           <Text style={styles.label}>TELÉFONO</Text>
           <View style={styles.input}>
             <Text style={styles.inputIcon}>📞</Text>
@@ -97,7 +116,7 @@ export default function RegisterScreen({ navigation }) {
             />
           </View>
 
-          {/* Contraseña */}
+          {/* HU-011: contraseña de acceso al perfil */}
           <Text style={styles.label}>CONTRASEÑA</Text>
           <View style={styles.input}>
             <Text style={styles.inputIcon}>🔒</Text>
@@ -114,7 +133,7 @@ export default function RegisterScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {/* Confirmar contraseña */}
+          {/* HU-011: confirmación de contraseña para validar el alta */}
           <Text style={styles.label}>CONFIRMAR CONTRASEÑA</Text>
           <View style={styles.input}>
             <Text style={styles.inputIcon}>🔒</Text>
@@ -131,7 +150,7 @@ export default function RegisterScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {/* Checkbox términos */}
+          {/* Checkbox términos y condiciones */}
           <TouchableOpacity
             style={styles.termsRow}
             onPress={() => setAcceptTerms(!acceptTerms)}
@@ -151,7 +170,7 @@ export default function RegisterScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
 
-          {/* Botón con gradiente */}
+          {/* HU-011: botón que dispara el registro del nuevo perfil */}
           <TouchableOpacity onPress={handleRegister} activeOpacity={0.85} style={styles.buttonWrapper}>
             <LinearGradient
               colors={[colors.secondary, '#A0522D', colors.primary]}

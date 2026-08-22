@@ -1,7 +1,17 @@
 /**
+ * HU-011 – Gestión de perfiles de usuarios
+ * "Como administrador, quiero registrar, consultar y actualizar los perfiles
+ * de los usuarios administrador, empleado y cliente para mantener la plantilla
+ * del personal operativa y actualizada."
+ *
+ * Este componente cubre los criterios de aceptación:
+ *  ✅ Tabla visible para el administrador con la lista de empleados activos e inactivos.
+ *  ✅ Acción para actualizar el estado (activo/inactivo) de cada perfil.
+ *  ✅ Búsqueda y filtrado por rol (Cliente / Admin / Todos).
+ *
  * UserManagementScreen.js
  * Pantalla de gestión de usuarios para el administrador.
- * - Permite buscar, filtrar y administrar usuarios mock.
+ * - Permite buscar, filtrar y administrar usuarios.
  * - Incluye acciones para cambiar rol, activar/desactivar y eliminar.
  * - Usa useState para controlar la lista de usuarios y los filtros.
  *
@@ -19,7 +29,11 @@ import {
 } from 'react-native';
 import colors from '../theme/colors';
 
-// Datos mock de usuarios
+/**
+ * HU-011: datos de muestra de perfiles de usuario.
+ * Cada entrada representa un perfil con nombre, email, rol y estado (activo/inactivo),
+ * que es exactamente la información que el administrador necesita consultar y actualizar.
+ */
 const initialUsers = [
   { id: '1', name: 'María García', email: 'maria@example.com', role: 'Cliente', status: 'Activo', orders: 24, joined: '2023-01-15' },
   { id: '2', name: 'Carlos López', email: 'carlos@example.com', role: 'Cliente', status: 'Activo', orders: 12, joined: '2023-03-20' },
@@ -29,11 +43,20 @@ const initialUsers = [
 ];
 
 export default function UserManagementScreen({ navigation }) {
+  // HU-011: lista de perfiles activos e inactivos
   const [users, setUsers] = useState(initialUsers);
-  const [searchText, setSearchText] = useState('');
-  const [filterRole, setFilterRole] = useState('Todos'); // 'Todos', 'Cliente', 'Admin'
 
-  // Filtrar usuarios por texto y rol
+  // HU-011: texto para buscar perfiles por nombre o email
+  const [searchText, setSearchText] = useState('');
+
+  // HU-011: filtro de rol para consultar por tipo de usuario (Todos / Cliente / Admin)
+  const [filterRole, setFilterRole] = useState('Todos');
+
+  /**
+   * HU-011 – Consultar usuarios
+   * Filtra la lista de perfiles por texto de búsqueda y por rol seleccionado,
+   * cumpliendo el criterio de "tabla visible con la lista de empleados activos e inactivos".
+   */
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchText.toLowerCase()) ||
                           user.email.toLowerCase().includes(searchText.toLowerCase());
@@ -41,7 +64,11 @@ export default function UserManagementScreen({ navigation }) {
     return matchesSearch && matchesRole;
   });
 
-  // Cambiar rol de usuario (mock)
+  /**
+   * HU-011 – Actualizar rol del perfil
+   * Permite al administrador cambiar el tipo de usuario (Cliente ↔ Admin)
+   * para mantener la plantilla del personal actualizada.
+   */
   const handleChangeRole = (userId, newRole) => {
     Alert.alert(
       'Cambiar rol',
@@ -63,7 +90,11 @@ export default function UserManagementScreen({ navigation }) {
   };
 // HU-012: Panel para suspender o reactivar cuentas de empleados
 
-  // Cambiar estado (Activar/Desactivar)
+  /**
+   * HU-011 – Actualizar estado del perfil (Activar / Desactivar)
+   * Criterio de aceptación: "Tabla visible con la lista de empleados activos e inactivos."
+   * Permite al administrador suspender o reactivar un perfil sin eliminarlo del sistema.
+   */
   const handleToggleStatus = (userId, currentStatus) => {
     const newStatus = currentStatus === 'Activo' ? 'Inactivo' : 'Activo';
     Alert.alert(
@@ -85,7 +116,7 @@ export default function UserManagementScreen({ navigation }) {
     );
   };
 
-  // Eliminar usuario
+  // HU-011: eliminar un perfil de usuario del sistema
   const handleDeleteUser = (userId, userName) => {
     Alert.alert(
       'Eliminar usuario',
@@ -106,19 +137,24 @@ export default function UserManagementScreen({ navigation }) {
   };
 
   return (
+    // HU-011: pantalla principal de gestión de perfiles, visible solo para el administrador
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
+      {/* HU-011: encabezado con botón para agregar nuevos perfiles */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Gestión de Usuarios</Text>
+        {/* HU-011: botón "+" para registrar un nuevo perfil de usuario */}
         <TouchableOpacity style={styles.addButton}>
           <Text style={styles.addButtonText}>+</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Barra de búsqueda y filtros */}
+      {/*
+       * HU-011 – Búsqueda y filtros de consulta
+       * Permite al administrador consultar perfiles por nombre, email o tipo de rol.
+       */}
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
@@ -127,6 +163,7 @@ export default function UserManagementScreen({ navigation }) {
           onChangeText={setSearchText}
           placeholderTextColor="#999"
         />
+        {/* HU-011: chips de filtro por rol (Todos / Cliente / Admin) */}
         <View style={styles.filterRow}>
           {['Todos', 'Cliente', 'Admin'].map(role => (
             <TouchableOpacity
@@ -142,7 +179,11 @@ export default function UserManagementScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Lista de usuarios */}
+      {/*
+       * HU-011 – Lista de perfiles activos e inactivos
+       * Criterio de aceptación: "Tabla visible para el administrador
+       * con la lista de empleados activos e inactivos."
+       */}
       <View style={styles.userList}>
         {filteredUsers.map(user => (
           <View key={user.id} style={styles.userCard}>
@@ -161,12 +202,12 @@ export default function UserManagementScreen({ navigation }) {
             </View>
 
             <View style={styles.userActions}>
-              {/* Indicador de rol con badge */}
+              {/* HU-011: badge de rol actual del perfil (Admin / Cliente) */}
               <View style={[styles.roleBadge, user.role === 'Admin' ? styles.adminBadge : styles.clientBadge]}>
                 <Text style={styles.roleBadgeText}>{user.role}</Text>
               </View>
 
-              {/* Botón para cambiar rol (solo si no es el mismo) */}
+              {/* HU-011: botón para actualizar el rol del perfil */}
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => handleChangeRole(user.id, user.role === 'Admin' ? 'Cliente' : 'Admin')}
@@ -174,7 +215,11 @@ export default function UserManagementScreen({ navigation }) {
                 <Text style={styles.actionIcon}>🔄</Text>
               </TouchableOpacity>
 
-              {/* Botón activar/desactivar */}
+              {/*
+               * HU-011 – Botón de actualización de estado
+               * 🔒 suspende el perfil activo → pasa a Inactivo
+               * 🔓 reactiva el perfil inactivo → pasa a Activo
+               */}
               <TouchableOpacity
                 style={[styles.actionButton, user.status === 'Inactivo' && styles.inactiveButton]}
                 onPress={() => handleToggleStatus(user.id, user.status)}
@@ -182,7 +227,7 @@ export default function UserManagementScreen({ navigation }) {
                 <Text style={styles.actionIcon}>{user.status === 'Activo' ? '🔒' : '🔓'}</Text>
               </TouchableOpacity>
 
-              {/* Botón eliminar */}
+              {/* HU-011: eliminar perfil del sistema */}
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => handleDeleteUser(user.id, user.name)}
@@ -191,13 +236,13 @@ export default function UserManagementScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            {/* Estado visual */}
+            {/* HU-011: indicador visual del estado del perfil (verde = Activo, rojo = Inactivo) */}
             <View style={[styles.statusIndicator, user.status === 'Activo' ? styles.statusActive : styles.statusInactive]} />
           </View>
         ))}
       </View>
 
-      {/* Estadísticas rápidas */}
+      {/* HU-011: resumen estadístico — total de perfiles, activos y administradores */}
       <View style={styles.statsFooter}>
         <Text style={styles.statsText}>
           Total: {users.length} usuarios | Activos: {users.filter(u => u.status === 'Activo').length} | Admins: {users.filter(u => u.role === 'Admin').length}

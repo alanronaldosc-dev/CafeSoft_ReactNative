@@ -1,5 +1,5 @@
 // CategoriaService.js
-const BASE_URL = 'http://192.168.100.6:8080/api';
+const BASE_URL = 'http://192.168.100.5:8080/api';
 
 const headers = {
   'Content-Type': 'application/json',
