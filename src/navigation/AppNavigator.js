@@ -23,6 +23,11 @@ import CategoriaFormScreen from '../screens/CategoriaFormScreen';
 import ProveedoresListScreen from '../screens/ProveedoresListScreen';
 import ProveedorFormScreen from '../screens/ProveedorFormScreen';
 
+//HU consulta de existencias 
+import InventarioListScreen from '../screens/InventarioListScreen';
+
+
+
 import colors from '../theme/colors';
 
 const Stack = createNativeStackNavigator();
@@ -151,6 +156,12 @@ export default function AppNavigator() {
         <Stack.Screen
           name="ProveedoresList"
           component={ProveedoresListScreen}
+        />
+
+        //Hu consulta de existencias 
+        <Stack.Screen
+          name="InventarioList"
+          component={InventarioListScreen}
         />
 
         <Stack.Screen

@@ -88,6 +88,33 @@ export default function ActionsScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+
+
+        {/* Existencias actuales - HU */}
+<View style={styles.card}>
+  <View style={styles.cardHeader}>
+    <View style={styles.cardIconContainer}>
+      <Text style={styles.cardIcon}>📊</Text>
+    </View>
+
+    <View>
+      <Text style={styles.cardTitle}>Existencias</Text>
+      <Text style={styles.cardSub}>
+        Consulta de stock actual y bajo stock
+      </Text>
+    </View>
+  </View>
+
+  <TouchableOpacity
+    style={styles.cardButton}
+    onPress={() => navigation.navigate('InventarioList')}
+  >
+    <Text style={styles.cardButtonText}>
+      Ver Existencias → 
+    </Text>
+  </TouchableOpacity>
+</View>
+
         {/* Productos */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
