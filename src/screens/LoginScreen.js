@@ -7,22 +7,144 @@ import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, ScrollView, Dimensions,
+  Alert, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import api from '../config/api';
+import { useAuth } from '../context/AuthContext';
 import colors from '../theme/colors';
 
 const { width, height } = Dimensions.get('window');
-const ROLES = ['Cliente', 'Administrador', 'Empleado'];
+const ROLES = ['Cliente', 'Administrador', 'Empleado', 'Repartidor'];
+
+const LOGIN_ENDPOINTS = [
+  '/auth/login',
+  '/usuarios/login',
+  '/login',
+];
+
+const normalizeRole = (value = '') =>
+  String(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 
 export default function LoginScreen({ navigation }) {
+  const { iniciarSesion } = useAuth();
   const [selectedRole, setSelectedRole] = useState('Cliente');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    navigation.navigate('Main');
+  const getUserFromResponse = (responseData, fallbackEmail) => {
+    const source =
+      responseData?.usuario ??
+      responseData?.user ??
+      responseData?.data?.usuario ??
+      responseData?.data?.user ??
+      responseData?.data ??
+      responseData?.result ??
+      responseData ??
+      {};
+
+    const usuario = Array.isArray(source) ? source[0] : source;
+
+    if (!usuario && typeof responseData === 'object') {
+      return {
+        id: responseData.id ?? responseData.idUsuario ?? responseData.userId,
+        nombre: responseData.nombre ?? responseData.name ?? 'Usuario',
+        email: responseData.email ?? responseData.correo ?? fallbackEmail,
+        rol: responseData.rol ?? responseData.role ?? selectedRole,
+      };
+    }
+
+    return {
+      ...usuario,
+      id: usuario?.id ?? usuario?.idUsuario ?? usuario?.userId ?? responseData?.id ?? responseData?.idUsuario,
+      nombre: usuario?.nombre ?? usuario?.name ?? usuario?.username ?? 'Usuario',
+      email: usuario?.email ?? usuario?.correo ?? fallbackEmail,
+      rol: usuario?.rol ?? usuario?.role ?? usuario?.tipoUsuario ?? usuario?.tipoRol ?? selectedRole,
+    };
+  };
+
+  const buildPayloads = () => {
+    const base = [
+      { email: email.trim(), password: password.trim() },
+      { email: email.trim(), contrasena: password.trim() },
+      { correo: email.trim(), password: password.trim() },
+      { correo: email.trim(), contrasena: password.trim() },
+      { username: email.trim(), password: password.trim() },
+    ];
+
+    return base.filter((payload, index, array) =>
+      JSON.stringify(payload) !== '{}' &&
+      array.findIndex((item) => JSON.stringify(item) === JSON.stringify(payload)) === index
+    );
+  };
+
+  const handleLogin = async () => {
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
+      Alert.alert('Faltan datos', 'Ingresa correo y contraseña para continuar.');
+      return;
+    }
+
+    setLoading(true);
+
+    let lastError = null;
+
+    try {
+      const payloads = buildPayloads();
+
+      for (const endpoint of LOGIN_ENDPOINTS) {
+        for (const payload of payloads) {
+          try {
+            const response = await api.post(endpoint, payload);
+            const usuario = getUserFromResponse(response.data, trimmedEmail);
+
+            if (!usuario || (!usuario.id && !usuario.email && !usuario.nombre)) {
+              continue;
+            }
+
+            const roleName = usuario.rol ?? usuario.role ?? selectedRole;
+            const normalized = normalizeRole(roleName);
+            const destino = normalized.includes('repart') ? 'CargasRepartidor' : 'Main';
+
+            iniciarSesion({
+              ...usuario,
+              nombre: usuario.nombre ?? 'Usuario',
+              email: usuario.email ?? trimmedEmail,
+              rol: roleName ?? selectedRole,
+            });
+
+            navigation.reset({
+              index: 0,
+              routes: [{ name: destino }],
+            });
+
+            return;
+          } catch (error) {
+            lastError = error;
+          }
+        }
+      }
+
+      const mensaje =
+        lastError?.response?.data?.message ||
+        lastError?.response?.data?.mensaje ||
+        lastError?.response?.data?.error ||
+        'Credenciales incorrectas o el servidor no respondió correctamente.';
+
+      Alert.alert('Error de inicio de sesión', mensaje);
+    } catch (error) {
+      Alert.alert('Error de inicio de sesión', error.message || 'No se pudo iniciar sesión.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -136,15 +258,24 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
 
           {/* Botón con gradiente */}
-          <TouchableOpacity onPress={handleLogin} activeOpacity={0.85} style={styles.buttonWrapper}>
+          <TouchableOpacity
+            onPress={handleLogin}
+            activeOpacity={0.85}
+            style={styles.buttonWrapper}
+            disabled={loading}
+          >
             <LinearGradient
-              colors={[colors.secondary, '#A0522D', colors.primary]}
+              colors={loading ? ['#8f6b54', '#8f6b54'] : [colors.secondary, '#A0522D', colors.primary]}
               style={styles.loginButton}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
-              <Text style={styles.loginButtonArrow}>→</Text>
+              {loading ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+              )}
+              {!loading && <Text style={styles.loginButtonArrow}>→</Text>}
             </LinearGradient>
           </TouchableOpacity>
 
