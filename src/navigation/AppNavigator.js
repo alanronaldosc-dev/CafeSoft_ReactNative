@@ -18,10 +18,11 @@ import ProductosListScreen from '../screens/ProductosListScreen';
 import ProductoFormScreen from '../screens/ProductoFormScreen';
 import CategoriasListScreen from '../screens/CategoriasListScreen';
 import CategoriaFormScreen from '../screens/CategoriaFormScreen';
-
-// HU-013 - PROVEEDORES
 import ProveedoresListScreen from '../screens/ProveedoresListScreen';
 import ProveedorFormScreen from '../screens/ProveedorFormScreen';
+
+// HU-005 - REPARTIDOR
+import CargasRepartidorScreen from '../screens/CargasRespartidor';
 
 import colors from '../theme/colors';
 
@@ -48,7 +49,6 @@ function MainTabs() {
           ),
         }}
       />
-
       <Tab.Screen
         name="Cart"
         component={CartScreen}
@@ -59,7 +59,6 @@ function MainTabs() {
           ),
         }}
       />
-
       <Tab.Screen
         name="Actions"
         component={ActionsScreen}
@@ -70,7 +69,6 @@ function MainTabs() {
           ),
         }}
       />
-
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
@@ -92,72 +90,23 @@ export default function AppNavigator() {
         initialRouteName="Login"
         screenOptions={{ headerShown: false }}
       >
-        <Stack.Screen
-          name="Login"
-          component={LoginScreen}
-        />
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="Main" component={MainTabs} />
 
-        <Stack.Screen
-          name="Register"
-          component={RegisterScreen}
-        />
+        {/* HU-005 - REPARTIDOR */}
+        <Stack.Screen name="CargasRepartidor" component={CargasRepartidorScreen} />
 
-        <Stack.Screen
-          name="Main"
-          component={MainTabs}
-        />
-
-        <Stack.Screen
-          name="InsumosList"
-          component={InsumosListScreen}
-        />
-
-        <Stack.Screen
-          name="InsumoForm"
-          component={InsumoFormScreen}
-        />
-
-        <Stack.Screen
-          name="LotesList"
-          component={LotesListScreen}
-        />
-
-        <Stack.Screen
-          name="LoteForm"
-          component={LoteFormScreen}
-        />
-
-        <Stack.Screen
-          name="ProductosList"
-          component={ProductosListScreen}
-        />
-
-        <Stack.Screen
-          name="ProductoForm"
-          component={ProductoFormScreen}
-        />
-
-        <Stack.Screen
-          name="CategoriasList"
-          component={CategoriasListScreen}
-        />
-
-        <Stack.Screen
-          name="CategoriaForm"
-          component={CategoriaFormScreen}
-        />
-
-        {/* HU-013 - PROVEEDORES */}
-        <Stack.Screen
-          name="ProveedoresList"
-          component={ProveedoresListScreen}
-        />
-
-        <Stack.Screen
-          name="ProveedorForm"
-          component={ProveedorFormScreen}
-        />
-
+        <Stack.Screen name="InsumosList" component={InsumosListScreen} />
+        <Stack.Screen name="InsumoForm" component={InsumoFormScreen} />
+        <Stack.Screen name="LotesList" component={LotesListScreen} />
+        <Stack.Screen name="LoteForm" component={LoteFormScreen} />
+        <Stack.Screen name="ProductosList" component={ProductosListScreen} />
+        <Stack.Screen name="ProductoForm" component={ProductoFormScreen} />
+        <Stack.Screen name="CategoriasList" component={CategoriasListScreen} />
+        <Stack.Screen name="CategoriaForm" component={CategoriaFormScreen} />
+        <Stack.Screen name="ProveedoresList" component={ProveedoresListScreen} />
+        <Stack.Screen name="ProveedorForm" component={ProveedorFormScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -6,29 +6,155 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ScrollView, Dimensions,
+  StyleSheet, ScrollView, Dimensions, Alert, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAuth } from '../context/AuthContext';
+import { BASE_URL } from '../config/api';
 import colors from '../theme/colors';
 
 const { width, height } = Dimensions.get('window');
-const ROLES = ['Cliente', 'Administrador', 'Empleado'];
+const ROLES = ['Cliente', 'Administrador', 'Empleado', 'Repartidor'];
+
+const LOGIN_ENDPOINTS = [
+  '/usuarios/login',
+  '/auth/login',
+  '/login',
+];
+
+const normalizeRole = (value = '') =>
+  String(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 export default function LoginScreen({ navigation }) {
+  const { iniciarSesion } = useAuth();
   const [selectedRole, setSelectedRole] = useState('Cliente');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    navigation.navigate('Main');
+  const getUserFromResponse = (responseData, fallbackEmail) => {
+    const source =
+      responseData?.usuario ??
+      responseData?.user ??
+      responseData?.data?.usuario ??
+      responseData?.data?.user ??
+      responseData?.data ??
+      responseData?.result ??
+      responseData ??
+      {};
+
+    const usuario = Array.isArray(source) ? source[0] : source;
+
+    if (!usuario && typeof responseData === 'object') {
+      return {
+        id: responseData.id ?? responseData.idUsuario ?? responseData.userId,
+        nombre: responseData.nombre ?? responseData.name ?? 'Usuario',
+        email: responseData.email ?? responseData.correo ?? fallbackEmail,
+        rol: responseData.rol ?? responseData.role ?? selectedRole,
+      };
+    }
+
+    return {
+      ...usuario,
+      id: usuario?.id ?? usuario?.idUsuario ?? usuario?.userId ?? responseData?.id ?? responseData?.idUsuario,
+      nombre: usuario?.nombre ?? usuario?.name ?? usuario?.username ?? 'Usuario',
+      email: usuario?.email ?? usuario?.correo ?? fallbackEmail,
+      rol: usuario?.rol ?? usuario?.role ?? usuario?.tipoUsuario ?? usuario?.tipoRol ?? selectedRole,
+    };
+  };
+
+  const buildPayloads = () => {
+    const base = [
+      { email: email.trim(), password: password.trim() },
+      { email: email.trim(), contrasena: password.trim() },
+      { correo: email.trim(), password: password.trim() },
+      { correo: email.trim(), contrasena: password.trim() },
+      { username: email.trim(), password: password.trim() },
+    ];
+    return base.filter((payload, index, array) =>
+      JSON.stringify(payload) !== '{}' &&
+      array.findIndex((item) => JSON.stringify(item) === JSON.stringify(payload)) === index
+    );
+  };
+
+  const handleLogin = async () => {
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
+      Alert.alert('Faltan datos', 'Ingresa correo y contraseña para continuar.');
+      return;
+    }
+
+    setLoading(true);
+    let lastError = null;
+
+    try {
+      const payloads = buildPayloads();
+
+      for (const endpoint of LOGIN_ENDPOINTS) {
+        for (const payload of payloads) {
+          try {
+            const response = await fetch(`${BASE_URL}${endpoint}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+              lastError = await response.json().catch(() => ({}));
+              continue;
+            }
+
+            const responseData = await response.json();
+            const usuario = getUserFromResponse(responseData, trimmedEmail);
+
+            if (!usuario || (!usuario.id && !usuario.email && !usuario.nombre)) {
+              continue;
+            }
+
+            const roleName = usuario.rol ?? usuario.role ?? selectedRole;
+            const normalized = normalizeRole(roleName);
+            const destino = normalized.includes('repart') ? 'CargasRepartidor' : 'Main';
+
+            iniciarSesion({
+              ...usuario,
+              nombre: usuario.nombre ?? 'Usuario',
+              email: usuario.email ?? trimmedEmail,
+              rol: roleName ?? selectedRole,
+            });
+
+            navigation.reset({
+              index: 0,
+              routes: [{ name: destino }],
+            });
+            return;
+          } catch (error) {
+            lastError = error;
+          }
+        }
+      }
+
+      const mensaje =
+        lastError?.response?.data?.message ||
+        lastError?.response?.data?.mensaje ||
+        lastError?.response?.data?.error ||
+        lastError?.error ||
+        lastError?.message ||
+        'Credenciales incorrectas o el servidor no respondió correctamente.';
+
+      Alert.alert('Error de inicio de sesión', mensaje);
+    } catch (error) {
+      Alert.alert('Error de inicio de sesión', error.message || 'No se pudo iniciar sesión.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
-
-      {/* Fondo con gradiente — equivalente a background: linear-gradient en CSS */}
       <LinearGradient
         colors={['#3D1A00', '#6B3A1F', '#3D1A00']}
         style={styles.gradient}
@@ -36,7 +162,6 @@ export default function LoginScreen({ navigation }) {
         end={{ x: 1, y: 1 }}
       />
 
-      {/* Círculos decorativos de fondo */}
       <View style={[styles.decorCircle, styles.decorCircle1]} />
       <View style={[styles.decorCircle, styles.decorCircle2]} />
       <View style={[styles.decorCircle, styles.decorCircle3]} />
@@ -45,12 +170,10 @@ export default function LoginScreen({ navigation }) {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* Sección ilustrativa superior */}
         <View style={styles.illustrationSection}>
           <View style={styles.illustrationMain}>
             <Text style={styles.illustrationEmoji}>☕</Text>
           </View>
-          {/* Elementos flotantes decorativos */}
           <View style={[styles.floatingEl, styles.floatingEl1]}>
             <Text style={{ fontSize: 20 }}>✨</Text>
           </View>
@@ -64,13 +187,10 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.appTagline}>Tu café favorito, donde quieras</Text>
         </View>
 
-        {/* Card del formulario con efecto glassmorphism */}
         <View style={styles.formCard}>
-
           <Text style={styles.title}>Bienvenido de nuevo</Text>
           <Text style={styles.subtitle}>Iniciá sesión para continuar</Text>
 
-          {/* Selector de rol */}
           <Text style={styles.label}>ROL DE ACCESO</Text>
           <TouchableOpacity
             style={styles.input}
@@ -99,7 +219,6 @@ export default function LoginScreen({ navigation }) {
             </View>
           )}
 
-          {/* Email */}
           <Text style={styles.label}>CORREO ELECTRÓNICO</Text>
           <View style={styles.input}>
             <Text style={styles.inputIcon}>✉️</Text>
@@ -114,7 +233,6 @@ export default function LoginScreen({ navigation }) {
             />
           </View>
 
-          {/* Contraseña */}
           <Text style={styles.label}>CONTRASEÑA</Text>
           <View style={styles.input}>
             <Text style={styles.inputIcon}>🔒</Text>
@@ -135,27 +253,33 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.forgotPasswordText}>¿Olvidé mi contraseña?</Text>
           </TouchableOpacity>
 
-          {/* Botón con gradiente */}
-          <TouchableOpacity onPress={handleLogin} activeOpacity={0.85} style={styles.buttonWrapper}>
+          <TouchableOpacity
+            onPress={handleLogin}
+            activeOpacity={0.85}
+            style={styles.buttonWrapper}
+            disabled={loading}
+          >
             <LinearGradient
-              colors={[colors.secondary, '#A0522D', colors.primary]}
+              colors={loading ? ['#8f6b54', '#8f6b54'] : [colors.secondary, '#A0522D', colors.primary]}
               style={styles.loginButton}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
-              <Text style={styles.loginButtonArrow}>→</Text>
+              {loading ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+              )}
+              {!loading && <Text style={styles.loginButtonArrow}>→</Text>}
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* Link registro */}
           <View style={styles.registerLink}>
             <Text style={styles.registerText}>¿No tienes cuenta? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
               <Text style={styles.registerLinkText}>Regístrate</Text>
             </TouchableOpacity>
           </View>
-
         </View>
       </ScrollView>
     </View>
@@ -171,7 +295,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
   },
-  // Círculos decorativos de fondo
   decorCircle: {
     position: 'absolute',
     borderRadius: 999,
@@ -196,7 +319,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 40,
   },
-  // Sección ilustrativa
   illustrationSection: {
     alignItems: 'center',
     paddingTop: 70,
@@ -233,14 +355,12 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
     marginTop: 4,
   },
-  // Card del formulario
   formCard: {
     backgroundColor: colors.background,
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
     padding: 28,
     paddingTop: 36,
-    // Sombra — equivalente a box-shadow en CSS
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.15,
@@ -273,7 +393,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    // Sombra suave en los inputs
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -353,7 +472,6 @@ const styles = StyleSheet.create({
   buttonWrapper: {
     marginTop: 20,
     borderRadius: 18,
-    // Sombra del botón
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
