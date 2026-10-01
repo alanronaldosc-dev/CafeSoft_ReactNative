@@ -10,19 +10,27 @@ import HomeScreen from '../screens/HomeScreen';
 import CartScreen from '../screens/CartScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ActionsScreen from '../screens/ActionsScreen';
+
 import InsumosListScreen from '../screens/InsumosListScreen';
 import InsumoFormScreen from '../screens/InsumoFormScreen';
+
 import LotesListScreen from '../screens/LotesListScreen';
 import LoteFormScreen from '../screens/LoteFormScreen';
+
 import ProductosListScreen from '../screens/ProductosListScreen';
 import ProductoFormScreen from '../screens/ProductoFormScreen';
+
 import CategoriasListScreen from '../screens/CategoriasListScreen';
 import CategoriaFormScreen from '../screens/CategoriaFormScreen';
+
+// HU-013 - PROVEEDORES
 import ProveedoresListScreen from '../screens/ProveedoresListScreen';
 import ProveedorFormScreen from '../screens/ProveedorFormScreen';
 
-// HU-005 - REPARTIDOR
-import CargasRepartidorScreen from '../screens/CargasRespartidor';
+// HU-006 - CONFIRMACIÓN DE CARGAS POR REPARTIDOR
+import CargasRepartidor from '../screens/CargasRepartidor';
+import PedidosScreen from '../screens/PedidosScreen';
+import RepartidorHomeScreen from '../screens/RepartidorHomeScreen';
 
 import colors from '../theme/colors';
 
@@ -35,7 +43,9 @@ function MainTabs() {
       screenOptions={{
         tabBarActiveTintColor: colors.secondary,
         tabBarInactiveTintColor: colors.textSecondary,
-        tabBarStyle: { backgroundColor: colors.white },
+        tabBarStyle: {
+          backgroundColor: colors.white,
+        },
         headerShown: false,
       }}
     >
@@ -49,6 +59,7 @@ function MainTabs() {
           ),
         }}
       />
+
       <Tab.Screen
         name="Cart"
         component={CartScreen}
@@ -59,6 +70,7 @@ function MainTabs() {
           ),
         }}
       />
+
       <Tab.Screen
         name="Actions"
         component={ActionsScreen}
@@ -69,6 +81,7 @@ function MainTabs() {
           ),
         }}
       />
+
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
@@ -88,25 +101,110 @@ export default function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator
         initialRouteName="Login"
-        screenOptions={{ headerShown: false }}
+        screenOptions={{
+          headerShown: false,
+        }}
       >
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
-        <Stack.Screen name="Main" component={MainTabs} />
+        {/* LOGIN */}
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+        />
 
-        {/* HU-005 - REPARTIDOR */}
-        <Stack.Screen name="CargasRepartidor" component={CargasRepartidorScreen} />
+        {/* REGISTRO */}
+        <Stack.Screen
+          name="Register"
+          component={RegisterScreen}
+        />
 
-        <Stack.Screen name="InsumosList" component={InsumosListScreen} />
-        <Stack.Screen name="InsumoForm" component={InsumoFormScreen} />
-        <Stack.Screen name="LotesList" component={LotesListScreen} />
-        <Stack.Screen name="LoteForm" component={LoteFormScreen} />
-        <Stack.Screen name="ProductosList" component={ProductosListScreen} />
-        <Stack.Screen name="ProductoForm" component={ProductoFormScreen} />
-        <Stack.Screen name="CategoriasList" component={CategoriasListScreen} />
-        <Stack.Screen name="CategoriaForm" component={CategoriaFormScreen} />
-        <Stack.Screen name="ProveedoresList" component={ProveedoresListScreen} />
-        <Stack.Screen name="ProveedorForm" component={ProveedorFormScreen} />
+        {/* NAVEGACIÓN PRINCIPAL */}
+        <Stack.Screen
+          name="Main"
+          component={MainTabs}
+        />
+
+        {/* INSUMOS */}
+        <Stack.Screen
+          name="InsumosList"
+          component={InsumosListScreen}
+        />
+
+        <Stack.Screen
+          name="InsumoForm"
+          component={InsumoFormScreen}
+        />
+
+        {/* LOTES */}
+        <Stack.Screen
+          name="LotesList"
+          component={LotesListScreen}
+        />
+
+        <Stack.Screen
+          name="LoteForm"
+          component={LoteFormScreen}
+        />
+
+        {/* PRODUCTOS */}
+        <Stack.Screen
+          name="ProductosList"
+          component={ProductosListScreen}
+        />
+
+        <Stack.Screen
+          name="ProductoForm"
+          component={ProductoFormScreen}
+        />
+
+        {/* CATEGORÍAS */}
+        <Stack.Screen
+          name="CategoriasList"
+          component={CategoriasListScreen}
+        />
+
+        <Stack.Screen
+          name="CategoriaForm"
+          component={CategoriaFormScreen}
+        />
+
+        {/* HU-013 - PROVEEDORES */}
+        <Stack.Screen
+          name="ProveedoresList"
+          component={ProveedoresListScreen}
+        />
+
+        <Stack.Screen
+          name="ProveedorForm"
+          component={ProveedorFormScreen}
+        />
+
+        {/* PANEL DEL REPARTIDOR */}
+        <Stack.Screen
+          name="RepartidorHome"
+          component={RepartidorHomeScreen}
+        />
+
+        {/* HU-015 - PEDIDOS DEL REPARTIDOR */}
+        <Stack.Screen
+          name="PedidosRepartidor"
+          component={PedidosScreen}
+          options={{
+            headerShown: true,
+            title: 'Pedidos por entregar',
+            headerBackTitle: 'Regresar',
+          }}
+        />
+
+        {/* HU-006 - CONFIRMACIÓN DE CARGA DEL REPARTIDOR */}
+        <Stack.Screen
+          name="CargasRepartidor"
+          component={CargasRepartidor}
+          options={{
+            headerShown: true,
+            title: 'Mis cargas',
+            headerBackTitle: 'Regresar',
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

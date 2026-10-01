@@ -1,32 +1,51 @@
 // ============================================
 // HU-008 - INICIO DE SESION MOVIL
-// Gestiona el acceso de los usuarios desde
-// la aplicacion movil de CafeSoft.
+// Actividad 07 - Implementacion de seguridad
 // ============================================
+
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ScrollView, Dimensions, Alert, ActivityIndicator,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Dimensions,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
+
 import { LinearGradient } from 'expo-linear-gradient';
+import api from '../config/api';
 import { useAuth } from '../context/AuthContext';
-import { BASE_URL } from '../config/api';
 import colors from '../theme/colors';
 
 const { width, height } = Dimensions.get('window');
-const ROLES = ['Cliente', 'Administrador', 'Empleado', 'Repartidor'];
+
+const ROLES = [
+  'Cliente',
+  'Administrador',
+  'Empleado',
+  'Repartidor',
+];
 
 const LOGIN_ENDPOINTS = [
-  '/usuarios/login',
   '/auth/login',
+  '/usuarios/login',
   '/login',
 ];
 
 const normalizeRole = (value = '') =>
-  String(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  String(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 
 export default function LoginScreen({ navigation }) {
+
   const { iniciarSesion } = useAuth();
+
   const [selectedRole, setSelectedRole] = useState('Cliente');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,7 +53,12 @@ export default function LoginScreen({ navigation }) {
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // ============================================
+  // OBTENER USUARIO DE LA RESPUESTA DE LA API
+  // ============================================
+
   const getUserFromResponse = (responseData, fallbackEmail) => {
+
     const source =
       responseData?.usuario ??
       responseData?.user ??
@@ -45,213 +69,590 @@ export default function LoginScreen({ navigation }) {
       responseData ??
       {};
 
-    const usuario = Array.isArray(source) ? source[0] : source;
+    const usuario = Array.isArray(source)
+      ? source[0]
+      : source;
 
     if (!usuario && typeof responseData === 'object') {
       return {
-        id: responseData.id ?? responseData.idUsuario ?? responseData.userId,
-        nombre: responseData.nombre ?? responseData.name ?? 'Usuario',
-        email: responseData.email ?? responseData.correo ?? fallbackEmail,
-        rol: responseData.rol ?? responseData.role ?? selectedRole,
+        id:
+          responseData.id ??
+          responseData.idUsuario ??
+          responseData.userId,
+
+        nombre:
+          responseData.nombre ??
+          responseData.name ??
+          'Usuario',
+
+        email:
+          responseData.email ??
+          responseData.correo ??
+          fallbackEmail,
+
+        rol:
+          responseData.rol ??
+          responseData.role ??
+          selectedRole,
       };
     }
 
     return {
       ...usuario,
-      id: usuario?.id ?? usuario?.idUsuario ?? usuario?.userId ?? responseData?.id ?? responseData?.idUsuario,
-      nombre: usuario?.nombre ?? usuario?.name ?? usuario?.username ?? 'Usuario',
-      email: usuario?.email ?? usuario?.correo ?? fallbackEmail,
-      rol: usuario?.rol ?? usuario?.role ?? usuario?.tipoUsuario ?? usuario?.tipoRol ?? selectedRole,
+
+      id:
+        usuario?.id ??
+        usuario?.idUsuario ??
+        usuario?.userId ??
+        responseData?.id ??
+        responseData?.idUsuario,
+
+      nombre:
+        usuario?.nombre ??
+        usuario?.name ??
+        usuario?.username ??
+        'Usuario',
+
+      email:
+        usuario?.email ??
+        usuario?.correo ??
+        fallbackEmail,
+
+      rol:
+        usuario?.rol ??
+        usuario?.role ??
+        usuario?.tipoUsuario ??
+        usuario?.tipoRol ??
+        selectedRole,
     };
   };
 
+  // ============================================
+  // CONSTRUIR DATOS PARA LA API
+  // ============================================
+
   const buildPayloads = () => {
+
     const base = [
-      { email: email.trim(), password: password.trim() },
-      { email: email.trim(), contrasena: password.trim() },
-      { correo: email.trim(), password: password.trim() },
-      { correo: email.trim(), contrasena: password.trim() },
-      { username: email.trim(), password: password.trim() },
+      {
+        email: email.trim(),
+        password: password.trim(),
+      },
+      {
+        email: email.trim(),
+        contrasena: password.trim(),
+      },
+      {
+        correo: email.trim(),
+        password: password.trim(),
+      },
+      {
+        correo: email.trim(),
+        contrasena: password.trim(),
+      },
+      {
+        username: email.trim(),
+        password: password.trim(),
+      },
     ];
-    return base.filter((payload, index, array) =>
-      JSON.stringify(payload) !== '{}' &&
-      array.findIndex((item) => JSON.stringify(item) === JSON.stringify(payload)) === index
+
+    return base.filter(
+      (payload, index, array) =>
+        JSON.stringify(payload) !== '{}' &&
+        array.findIndex(
+          (item) =>
+            JSON.stringify(item) ===
+            JSON.stringify(payload)
+        ) === index
     );
   };
 
+  // ============================================
+  // INICIO DE SESION
+  // ============================================
+
   const handleLogin = async () => {
+
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
 
+    // ==========================================
+    // SEGURIDAD 1
+    // VALIDACION DE ENTRADAS
+    // ==========================================
+
+    // No permitir campos vacíos
     if (!trimmedEmail || !trimmedPassword) {
-      Alert.alert('Faltan datos', 'Ingresa correo y contraseña para continuar.');
+      Alert.alert(
+        'Datos incompletos',
+        'El correo y la contraseña son obligatorios.'
+      );
+
       return;
     }
 
+    // Validar formato del correo
+    const emailRegex =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(trimmedEmail)) {
+
+      Alert.alert(
+        'Correo inválido',
+        'Ingresa un correo electrónico válido.'
+      );
+
+      return;
+    }
+
+    // Validar longitud mínima de contraseña
+    if (trimmedPassword.length < 8) {
+
+      Alert.alert(
+        'Contraseña inválida',
+        'La contraseña debe contener al menos 8 caracteres.'
+      );
+
+      return;
+    }
+
+    // Si las validaciones fueron correctas
+    // se permite realizar la petición a la API
+
     setLoading(true);
+
     let lastError = null;
 
     try {
+
       const payloads = buildPayloads();
 
       for (const endpoint of LOGIN_ENDPOINTS) {
+
         for (const payload of payloads) {
+
           try {
-            const response = await fetch(`${BASE_URL}${endpoint}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
-            });
 
-            if (!response.ok) {
-              lastError = await response.json().catch(() => ({}));
+            const response =
+              await api.post(endpoint, payload);
+
+            const usuario =
+              getUserFromResponse(
+                response.data,
+                trimmedEmail
+              );
+
+            if (
+              !usuario ||
+              (
+                !usuario.id &&
+                !usuario.email &&
+                !usuario.nombre
+              )
+            ) {
               continue;
             }
 
-            const responseData = await response.json();
-            const usuario = getUserFromResponse(responseData, trimmedEmail);
+            const roleName =
+              usuario.rol ??
+              usuario.role ??
+              selectedRole;
 
-            if (!usuario || (!usuario.id && !usuario.email && !usuario.nombre)) {
-              continue;
-            }
+            const normalized =
+              normalizeRole(roleName);
 
-            const roleName = usuario.rol ?? usuario.role ?? selectedRole;
-            const normalized = normalizeRole(roleName);
-            const destino = normalized.includes('repart') ? 'CargasRepartidor' : 'Main';
+            const destino =
+              normalized.includes('repart')
+                ? 'RepartidorHome'
+                : 'Main';
 
             iniciarSesion({
               ...usuario,
-              nombre: usuario.nombre ?? 'Usuario',
-              email: usuario.email ?? trimmedEmail,
-              rol: roleName ?? selectedRole,
+
+              nombre:
+                usuario.nombre ??
+                'Usuario',
+
+              email:
+                usuario.email ??
+                trimmedEmail,
+
+              rol:
+                roleName ??
+                selectedRole,
             });
 
             navigation.reset({
               index: 0,
-              routes: [{ name: destino }],
+              routes: [
+                {
+                  name: destino,
+                },
+              ],
             });
+
             return;
+
           } catch (error) {
+
             lastError = error;
+
           }
         }
       }
 
-      const mensaje =
-        lastError?.response?.data?.message ||
-        lastError?.response?.data?.mensaje ||
-        lastError?.response?.data?.error ||
-        lastError?.error ||
-        lastError?.message ||
-        'Credenciales incorrectas o el servidor no respondió correctamente.';
+      // ==========================================
+      // SEGURIDAD 2
+      // MANEJO SEGURO DE ERRORES
+      // ==========================================
 
-      Alert.alert('Error de inicio de sesión', mensaje);
+      /*
+        No mostramos directamente los errores
+        internos enviados por el servidor.
+
+        Esto evita mostrar información sensible
+        o detalles internos de la API.
+      */
+
+      if (lastError?.response?.status === 401) {
+
+        Alert.alert(
+          'Acceso denegado',
+          'Correo o contraseña incorrectos.'
+        );
+
+      } else if (
+        lastError?.response?.status === 400
+      ) {
+
+        Alert.alert(
+          'Datos inválidos',
+          'Verifica la información ingresada.'
+        );
+
+      } else {
+
+        Alert.alert(
+          'Error de inicio de sesión',
+          'No fue posible iniciar sesión. Intenta nuevamente.'
+        );
+      }
+
     } catch (error) {
-      Alert.alert('Error de inicio de sesión', error.message || 'No se pudo iniciar sesión.');
+
+      /*
+        Mensaje genérico.
+        No mostramos error.message al usuario.
+      */
+
+      Alert.alert(
+        'Error',
+        'Ocurrió un problema al iniciar sesión. Intenta nuevamente.'
+      );
+
     } finally {
+
       setLoading(false);
+
     }
   };
 
+  // ============================================
+  // INTERFAZ
+  // ============================================
+
   return (
+
     <View style={styles.container}>
+
+      {/* Fondo */}
+
       <LinearGradient
-        colors={['#3D1A00', '#6B3A1F', '#3D1A00']}
+        colors={[
+          '#3D1A00',
+          '#6B3A1F',
+          '#3D1A00',
+        ]}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
 
-      <View style={[styles.decorCircle, styles.decorCircle1]} />
-      <View style={[styles.decorCircle, styles.decorCircle2]} />
-      <View style={[styles.decorCircle, styles.decorCircle3]} />
+      {/* Círculos decorativos */}
+
+      <View
+        style={[
+          styles.decorCircle,
+          styles.decorCircle1,
+        ]}
+      />
+
+      <View
+        style={[
+          styles.decorCircle,
+          styles.decorCircle2,
+        ]}
+      />
+
+      <View
+        style={[
+          styles.decorCircle,
+          styles.decorCircle3,
+        ]}
+      />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
+
+        {/* Parte superior */}
+
         <View style={styles.illustrationSection}>
+
           <View style={styles.illustrationMain}>
-            <Text style={styles.illustrationEmoji}>☕</Text>
+            <Text style={styles.illustrationEmoji}>
+              ☕
+            </Text>
           </View>
-          <View style={[styles.floatingEl, styles.floatingEl1]}>
-            <Text style={{ fontSize: 20 }}>✨</Text>
+
+          <View
+            style={[
+              styles.floatingEl,
+              styles.floatingEl1,
+            ]}
+          >
+            <Text style={{ fontSize: 20 }}>
+              ✨
+            </Text>
           </View>
-          <View style={[styles.floatingEl, styles.floatingEl2]}>
-            <Text style={{ fontSize: 16 }}>🫘</Text>
+
+          <View
+            style={[
+              styles.floatingEl,
+              styles.floatingEl2,
+            ]}
+          >
+            <Text style={{ fontSize: 16 }}>
+              🫘
+            </Text>
           </View>
-          <View style={[styles.floatingEl, styles.floatingEl3]}>
-            <Text style={{ fontSize: 18 }}>🍂</Text>
+
+          <View
+            style={[
+              styles.floatingEl,
+              styles.floatingEl3,
+            ]}
+          >
+            <Text style={{ fontSize: 18 }}>
+              🍂
+            </Text>
           </View>
-          <Text style={styles.appName}>CafeSoft</Text>
-          <Text style={styles.appTagline}>Tu café favorito, donde quieras</Text>
+
+          <Text style={styles.appName}>
+            CafeSoft
+          </Text>
+
+          <Text style={styles.appTagline}>
+            Tu café favorito, donde quieras
+          </Text>
+
         </View>
 
-        <View style={styles.formCard}>
-          <Text style={styles.title}>Bienvenido de nuevo</Text>
-          <Text style={styles.subtitle}>Iniciá sesión para continuar</Text>
+        {/* FORMULARIO */}
 
-          <Text style={styles.label}>ROL DE ACCESO</Text>
+        <View style={styles.formCard}>
+
+          <Text style={styles.title}>
+            Bienvenido de nuevo
+          </Text>
+
+          <Text style={styles.subtitle}>
+            Iniciá sesión para continuar
+          </Text>
+
+          {/* ROL */}
+
+          <Text style={styles.label}>
+            ROL DE ACCESO
+          </Text>
+
           <TouchableOpacity
             style={styles.input}
-            onPress={() => setShowRoleDropdown(!showRoleDropdown)}
+            onPress={() =>
+              setShowRoleDropdown(
+                !showRoleDropdown
+              )
+            }
             activeOpacity={0.8}
           >
+
             <View style={styles.roleDot} />
-            <Text style={styles.inputText}>{selectedRole}</Text>
-            <Text style={styles.dropdownArrow}>{showRoleDropdown ? '▴' : '▾'}</Text>
+
+            <Text style={styles.inputText}>
+              {selectedRole}
+            </Text>
+
+            <Text style={styles.dropdownArrow}>
+              {showRoleDropdown
+                ? '▴'
+                : '▾'}
+            </Text>
+
           </TouchableOpacity>
 
           {showRoleDropdown && (
+
             <View style={styles.dropdown}>
-              {ROLES.map(role => (
+
+              {ROLES.map((role) => (
+
                 <TouchableOpacity
                   key={role}
-                  style={[styles.dropdownItem, selectedRole === role && styles.dropdownItemActive]}
-                  onPress={() => { setSelectedRole(role); setShowRoleDropdown(false); }}
+
+                  style={[
+                    styles.dropdownItem,
+
+                    selectedRole === role &&
+                      styles.dropdownItemActive,
+                  ]}
+
+                  onPress={() => {
+                    setSelectedRole(role);
+                    setShowRoleDropdown(false);
+                  }}
                 >
-                  <Text style={[styles.dropdownText, selectedRole === role && styles.dropdownTextActive]}>
+
+                  <Text
+                    style={[
+                      styles.dropdownText,
+
+                      selectedRole === role &&
+                        styles.dropdownTextActive,
+                    ]}
+                  >
                     {role}
                   </Text>
-                  {selectedRole === role && <Text style={styles.checkIcon}>✓</Text>}
+
+                  {selectedRole === role && (
+
+                    <Text style={styles.checkIcon}>
+                      ✓
+                    </Text>
+
+                  )}
+
                 </TouchableOpacity>
+
               ))}
+
             </View>
+
           )}
 
-          <Text style={styles.label}>CORREO ELECTRÓNICO</Text>
+          {/* CORREO */}
+
+          <Text style={styles.label}>
+            CORREO ELECTRÓNICO
+          </Text>
+
           <View style={styles.input}>
-            <Text style={styles.inputIcon}>✉️</Text>
+
+            <Text style={styles.inputIcon}>
+              ✉️
+            </Text>
+
             <TextInput
               style={styles.textInput}
+
               placeholder="tu@correo.com"
-              placeholderTextColor={colors.textSecondary}
+
+              placeholderTextColor={
+                colors.textSecondary
+              }
+
               value={email}
+
               onChangeText={setEmail}
+
               keyboardType="email-address"
+
               autoCapitalize="none"
+
+              autoCorrect={false}
             />
+
           </View>
 
-          <Text style={styles.label}>CONTRASEÑA</Text>
+          {/* CONTRASEÑA */}
+
+          <Text style={styles.label}>
+            CONTRASEÑA
+          </Text>
+
           <View style={styles.input}>
-            <Text style={styles.inputIcon}>🔒</Text>
+
+            <Text style={styles.inputIcon}>
+              🔒
+            </Text>
+
             <TextInput
               style={styles.textInput}
+
               placeholder="••••••••"
-              placeholderTextColor={colors.textSecondary}
+
+              placeholderTextColor={
+                colors.textSecondary
+              }
+
               value={password}
+
               onChangeText={setPassword}
-              secureTextEntry={!showPassword}
+
+              secureTextEntry={
+                !showPassword
+              }
+
+              autoCapitalize="none"
+
+              autoCorrect={false}
             />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              <Text style={styles.inputIcon}>{showPassword ? '🙈' : '👁️'}</Text>
+
+            <TouchableOpacity
+              onPress={() =>
+                setShowPassword(
+                  !showPassword
+                )
+              }
+            >
+
+              <Text style={styles.inputIcon}>
+                {showPassword
+                  ? '🙈'
+                  : '👁️'}
+              </Text>
+
             </TouchableOpacity>
+
           </View>
 
-          <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>¿Olvidé mi contraseña?</Text>
+          {/* Recuperar contraseña */}
+
+          <TouchableOpacity
+            style={styles.forgotPassword}
+          >
+
+            <Text
+              style={
+                styles.forgotPasswordText
+              }
+            >
+              ¿Olvidé mi contraseña?
+            </Text>
+
           </TouchableOpacity>
+
+          {/* BOTÓN */}
 
           <TouchableOpacity
             onPress={handleLogin}
@@ -259,125 +660,264 @@ export default function LoginScreen({ navigation }) {
             style={styles.buttonWrapper}
             disabled={loading}
           >
+
             <LinearGradient
-              colors={loading ? ['#8f6b54', '#8f6b54'] : [colors.secondary, '#A0522D', colors.primary]}
+              colors={
+                loading
+                  ? [
+                      '#8f6b54',
+                      '#8f6b54',
+                    ]
+                  : [
+                      colors.secondary,
+                      '#A0522D',
+                      colors.primary,
+                    ]
+              }
+
               style={styles.loginButton}
+
               start={{ x: 0, y: 0 }}
+
               end={{ x: 1, y: 0 }}
             >
+
               {loading ? (
-                <ActivityIndicator size="small" color={colors.white} />
+
+                <ActivityIndicator
+                  size="small"
+                  color={colors.white}
+                />
+
               ) : (
-                <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+
+                <Text
+                  style={
+                    styles.loginButtonText
+                  }
+                >
+                  Iniciar Sesión
+                </Text>
+
               )}
-              {!loading && <Text style={styles.loginButtonArrow}>→</Text>}
+
+              {!loading && (
+
+                <Text
+                  style={
+                    styles.loginButtonArrow
+                  }
+                >
+                  →
+                </Text>
+
+              )}
+
             </LinearGradient>
+
           </TouchableOpacity>
 
+          {/* REGISTRO */}
+
           <View style={styles.registerLink}>
-            <Text style={styles.registerText}>¿No tienes cuenta? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.registerLinkText}>Regístrate</Text>
+
+            <Text style={styles.registerText}>
+              ¿No tienes cuenta?{' '}
+            </Text>
+
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate(
+                  'Register'
+                )
+              }
+            >
+
+              <Text
+                style={
+                  styles.registerLinkText
+                }
+              >
+                Regístrate
+              </Text>
+
             </TouchableOpacity>
+
           </View>
+
         </View>
+
       </ScrollView>
+
     </View>
   );
 }
 
+// ============================================
+// ESTILOS
+// ============================================
+
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
     backgroundColor: colors.primary,
   },
+
   gradient: {
     position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
+
   decorCircle: {
     position: 'absolute',
     borderRadius: 999,
     opacity: 0.15,
   },
+
   decorCircle1: {
-    width: 300, height: 300,
+    width: 300,
+    height: 300,
     backgroundColor: '#C8763A',
-    top: -80, right: -80,
+    top: -80,
+    right: -80,
   },
+
   decorCircle2: {
-    width: 200, height: 200,
+    width: 200,
+    height: 200,
     backgroundColor: '#3D1A00',
-    top: 100, left: -60,
+    top: 100,
+    left: -60,
   },
+
   decorCircle3: {
-    width: 150, height: 150,
+    width: 150,
+    height: 150,
     backgroundColor: '#3D1A00',
-    top: 220, right: 20,
+    top: 220,
+    right: 20,
   },
+
   scroll: {
     flexGrow: 1,
     paddingBottom: 40,
   },
+
   illustrationSection: {
     alignItems: 'center',
     paddingTop: 70,
     paddingBottom: 30,
     position: 'relative',
   },
+
   illustrationMain: {
-    width: 110, height: 110, borderRadius: 35,
-    backgroundColor: 'rgba(245, 166, 35, 0.3)',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: 'rgba(245, 166, 35, 0.5)',
+    width: 110,
+    height: 110,
+    borderRadius: 35,
+
+    backgroundColor:
+      'rgba(245, 166, 35, 0.3)',
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    borderWidth: 2,
+
+    borderColor:
+      'rgba(245, 166, 35, 0.5)',
+
     marginBottom: 16,
   },
+
   illustrationEmoji: {
     fontSize: 56,
   },
+
   floatingEl: {
     position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+
+    backgroundColor:
+      'rgba(255,255,255,0.15)',
+
     borderRadius: 20,
+
     padding: 8,
   },
-  floatingEl1: { top: 60, right: 60 },
-  floatingEl2: { top: 130, left: 50 },
-  floatingEl3: { top: 80, left: 80 },
+
+  floatingEl1: {
+    top: 60,
+    right: 60,
+  },
+
+  floatingEl2: {
+    top: 130,
+    left: 50,
+  },
+
+  floatingEl3: {
+    top: 80,
+    left: 80,
+  },
+
   appName: {
     fontSize: 34,
     fontWeight: 'bold',
     color: colors.textLight,
     letterSpacing: 2,
   },
+
   appTagline: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
+
+    color:
+      'rgba(255,255,255,0.7)',
+
     marginTop: 4,
   },
+
   formCard: {
-    backgroundColor: colors.background,
+    backgroundColor:
+      colors.background,
+
     borderTopLeftRadius: 36,
+
     borderTopRightRadius: 36,
+
     padding: 28,
+
     paddingTop: 36,
+
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
+
+    shadowOffset: {
+      width: 0,
+      height: -4,
+    },
+
     shadowOpacity: 0.15,
+
     shadowRadius: 20,
+
     elevation: 10,
   },
+
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: colors.primary,
     marginBottom: 4,
   },
+
   subtitle: {
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 24,
   },
+
   label: {
     fontSize: 11,
     fontWeight: '800',
@@ -386,6 +926,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 16,
   },
+
   input: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -393,91 +934,134 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
+
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
+
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+
     shadowOpacity: 0.08,
+
     shadowRadius: 8,
+
     elevation: 2,
   },
+
   roleDot: {
-    width: 10, height: 10,
+    width: 10,
+    height: 10,
     borderRadius: 5,
     backgroundColor: colors.secondary,
     marginRight: 10,
   },
+
   inputIcon: {
     fontSize: 16,
     marginRight: 10,
   },
+
   inputText: {
     flex: 1,
     fontSize: 15,
     color: colors.textPrimary,
     fontWeight: '500',
   },
+
   textInput: {
     flex: 1,
     fontSize: 15,
     color: colors.textPrimary,
   },
+
   dropdownArrow: {
     color: colors.textSecondary,
     fontSize: 14,
   },
+
   dropdown: {
     backgroundColor: colors.white,
     borderRadius: 16,
     marginTop: 6,
     overflow: 'hidden',
+
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+
     shadowOpacity: 0.1,
+
     shadowRadius: 12,
+
     elevation: 5,
   },
+
   dropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
+
     borderBottomWidth: 1,
-    borderBottomColor: colors.background,
+
+    borderBottomColor:
+      colors.background,
   },
+
   dropdownItemActive: {
     backgroundColor: colors.surface,
   },
+
   dropdownText: {
     flex: 1,
     fontSize: 15,
     color: colors.textPrimary,
   },
+
   dropdownTextActive: {
     fontWeight: '700',
     color: colors.secondary,
   },
+
   checkIcon: {
     color: colors.secondary,
     fontWeight: 'bold',
   },
+
   forgotPassword: {
     alignSelf: 'flex-end',
     marginTop: 12,
     marginBottom: 8,
   },
+
   forgotPasswordText: {
     color: colors.secondary,
     fontSize: 14,
     fontWeight: '600',
   },
+
   buttonWrapper: {
     marginTop: 20,
     borderRadius: 18,
+
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
+
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+
     shadowOpacity: 0.35,
+
     shadowRadius: 12,
+
     elevation: 8,
   },
+
   loginButton: {
     borderRadius: 18,
     paddingVertical: 17,
@@ -486,29 +1070,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
   },
+
   loginButtonText: {
     color: colors.white,
     fontSize: 17,
     fontWeight: 'bold',
     letterSpacing: 0.5,
   },
+
   loginButtonArrow: {
     color: colors.white,
     fontSize: 18,
     fontWeight: 'bold',
   },
+
   registerLink: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 24,
   },
+
   registerText: {
     color: colors.textSecondary,
     fontSize: 14,
   },
+
   registerLinkText: {
     color: colors.secondary,
     fontSize: 14,
     fontWeight: 'bold',
   },
+
 });

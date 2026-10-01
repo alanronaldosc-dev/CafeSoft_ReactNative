@@ -1,1477 +1,652 @@
-import React, {
-  useState,
-  useCallback,
-  useEffect,
-} from 'react';
-
+import React, { useCallback, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
   Alert,
+  Modal,
   RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 
+import api from '../config/api';
+import { useAuth } from '../context/AuthContext';
 import colors from '../theme/colors';
 
-
-import { BASE_URL } from '../config/api';
-
-
 export default function PedidosScreen() {
+  const { usuario } = useAuth();
 
-  const [
-    pedidos,
-    setPedidos,
-  ] = useState([]);
+  const repartidorId =
+    usuario?.id ?? usuario?.idUsuario ?? usuario?.id_usuario;
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  const [pedidos, setPedidos] = useState([]);
+  const [resumenHoy, setResumenHoy] = useState(null);
+  const [cargando, setCargando] = useState(true);
+  const [refrescando, setRefrescando] = useState(false);
+  const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [guardando, setGuardando] = useState(false);
 
-  const [
-    refreshing,
-    setRefreshing,
-  ] = useState(false);
+  const [garrafones, setGarrafones] = useState('1');
+  const [envasesVacios, setEnvasesVacios] = useState('0');
+  const [metodoCobro, setMetodoCobro] = useState('EFECTIVO');
+  const [montoCobrado, setMontoCobrado] = useState('0');
+  const [observaciones, setObservaciones] = useState('');
 
-  const [
-    entregandoId,
-    setEntregandoId,
-  ] = useState(null);
+  const cargarResumenHoy = async () => {
+    if (!repartidorId) return;
 
-
-  // =========================================
-  // CARGAR PEDIDOS
-  // =========================================
-
-  const cargarPedidos =
-    async (mostrarCarga = true) => {
-
-      try {
-
-        if (mostrarCarga) {
-          setLoading(true);
-        }
-
-
-        const response =
-          await fetch(
-            `${BASE_URL}/ventas/pedidos/pendientes`
-          );
-
-
-        if (!response.ok) {
-
-          const errorTexto =
-            await response.text();
-
-          throw new Error(
-            errorTexto ||
-            'No se pudieron cargar los pedidos'
-          );
-
-        }
-
-
-        const data =
-          await response.json();
-
-
-        console.log(
-          'PEDIDOS PENDIENTES:',
-          data
-        );
-
-
-        setPedidos(
-          Array.isArray(data)
-            ? data
-            : []
-        );
-
-
-      } catch (error) {
-
-        console.error(
-          'ERROR PEDIDOS:',
-          error
-        );
-
-
-        Alert.alert(
-          'Error',
-          error.message ||
-          'No se pudieron cargar los pedidos'
-        );
-
-
-      } finally {
-
-        if (mostrarCarga) {
-          setLoading(false);
-        }
-
-        setRefreshing(false);
-
-      }
-
-    };
-
-
-  // =========================================
-  // CUANDO ENTRA A LA PANTALLA
-  // =========================================
-
-  useFocusEffect(
-
-    useCallback(() => {
-
-      cargarPedidos();
-
-
-      const intervalo =
-        setInterval(() => {
-
-          cargarPedidos(false);
-
-        }, 5000);
-
-
-      return () => {
-
-        clearInterval(
-          intervalo
-        );
-
-      };
-
-    }, [])
-
-  );
-
-
-  // =========================================
-  // ACTUALIZAR DESLIZANDO
-  // =========================================
-
-  const onRefresh = () => {
-
-    setRefreshing(true);
-
-    cargarPedidos(false);
-
+    try {
+      const res = await api.get(
+        `/liquidaciones/repartidor/${repartidorId}/resumen`
+      );
+      setResumenHoy(res.data);
+    } catch (error) {
+      console.log('No se pudo cargar el resumen del día:', error?.message);
+    }
   };
 
+  const cargarPedidos = async (mostrarCarga = true) => {
+    try {
+      if (mostrarCarga) setCargando(true);
 
-  // =========================================
-  // MARCAR ENTREGADO
-  // =========================================
-
-  const marcarEntregado =
-    async (pedido) => {
-
+      const res = await api.get('/ventas/pedidos/pendientes');
+      setPedidos(Array.isArray(res.data) ? res.data : []);
+    } catch (error) {
+      console.error('Error cargando pedidos:', error);
       Alert.alert(
-        'Confirmar entrega',
-        `¿Marcar el pedido ${pedido.folio} como entregado?`,
-        [
-
-          {
-            text: 'Cancelar',
-            style: 'cancel',
-          },
-
-          {
-            text: 'Entregar',
-
-            onPress:
-              async () => {
-
-                try {
-
-                  setEntregandoId(
-                    pedido.id
-                  );
-
-
-                  const response =
-                    await fetch(
-                      `${BASE_URL}/ventas/${pedido.id}/entregar`,
-                      {
-                        method:
-                          'PUT',
-
-                        headers: {
-                          Accept:
-                            'application/json',
-                        },
-                      }
-                    );
-
-
-                  if (
-                    !response.ok
-                  ) {
-
-                    const errorTexto =
-                      await response.text();
-
-                    throw new Error(
-                      errorTexto ||
-                      'No se pudo entregar el pedido'
-                    );
-
-                  }
-
-
-                  // Lo quitamos inmediatamente
-                  // de la lista de pendientes
-
-                  setPedidos(
-                    (prev) =>
-                      prev.filter(
-                        (p) =>
-                          p.id !==
-                          pedido.id
-                      )
-                  );
-
-
-                  Alert.alert(
-                    'Pedido entregado',
-                    `${pedido.folio} fue marcado como entregado`
-                  );
-
-
-                } catch (error) {
-
-                  console.error(
-                    'ERROR ENTREGAR:',
-                    error
-                  );
-
-
-                  Alert.alert(
-                    'Error',
-                    error.message ||
-                    'No se pudo marcar el pedido como entregado'
-                  );
-
-
-                } finally {
-
-                  setEntregandoId(
-                    null
-                  );
-
-                }
-
-              },
-
-          },
-
-        ]
+        'Error',
+        error.response?.data?.error || 'No se pudieron cargar los pedidos.'
       );
-
-    };
-
-
-  // =========================================
-  // FORMATEAR FECHA
-  // =========================================
-
-  const formatearFecha =
-    (fecha) => {
-
-      if (!fecha) {
-        return '';
-      }
-
-
-      try {
-
-        return new Date(
-          fecha
-        ).toLocaleString(
-          'es-MX'
-        );
-
-      } catch {
-
-        return fecha;
-
-      }
-
-    };
-
-
-  // =========================================
-  // CARGANDO
-  // =========================================
-
-  if (loading) {
-
-    return (
-
-      <View
-        style={
-          styles.container
-        }
-      >
-
-        <LinearGradient
-
-          colors={[
-            '#3D1A00',
-            '#6B3A1F',
-          ]}
-
-          style={
-            styles.header
-          }
-
-          start={{
-            x: 0,
-            y: 0,
-          }}
-
-          end={{
-            x: 1,
-            y: 1,
-          }}
-
-        >
-
-          <Text
-            style={
-              styles.headerTitle
-            }
-          >
-            Pedidos
-          </Text>
-
-        </LinearGradient>
-
-
-        <View
-          style={
-            styles.centered
-          }
-        >
-
-          <ActivityIndicator
-
-            size="large"
-
-            color={
-              colors.secondary
-            }
-
-          />
-
-
-          <Text
-            style={
-              styles.loadingText
-            }
-          >
-            Cargando pedidos...
-          </Text>
-
-        </View>
-
-      </View>
-
-    );
-
-  }
-
-
-  // =========================================
-  // PANTALLA
-  // =========================================
-
-  return (
-
-    <View
-      style={
-        styles.container
-      }
-    >
-
-
-      <LinearGradient
-
-        colors={[
-          '#3D1A00',
-          '#6B3A1F',
-        ]}
-
-        style={
-          styles.header
-        }
-
-        start={{
-          x: 0,
-          y: 0,
-        }}
-
-        end={{
-          x: 1,
-          y: 1,
-        }}
-
-      >
-
-        <View
-          style={
-            styles.headerContent
-          }
-        >
-
-          <Text
-            style={
-              styles.headerTitle
-            }
-          >
-            🍽️ Pedidos
-          </Text>
-
-
-          <Text
-            style={
-              styles.headerSubtitle
-            }
-          >
-            Pedidos pendientes
-          </Text>
-
-        </View>
-
-
-        <View
-          style={
-            styles.counter
-          }
-        >
-
-          <Text
-            style={
-              styles.counterText
-            }
-          >
-            {pedidos.length}
-          </Text>
-
-        </View>
-
-      </LinearGradient>
-
-
-      <ScrollView
-
-        contentContainerStyle={
-          styles.scroll
-        }
-
-        refreshControl={
-
-          <RefreshControl
-
-            refreshing={
-              refreshing
-            }
-
-            onRefresh={
-              onRefresh
-            }
-
-            colors={[
-              colors.secondary,
-            ]}
-
-          />
-
-        }
-
-      >
-
-
-        {
-          pedidos.length === 0
-
-            ? (
-
-              <View
-                style={
-                  styles.emptyContainer
-                }
-              >
-
-                <Text
-                  style={
-                    styles.emptyEmoji
-                  }
-                >
-                  ✅
-                </Text>
-
-
-                <Text
-                  style={
-                    styles.emptyTitle
-                  }
-                >
-                  No hay pedidos pendientes
-                </Text>
-
-
-                <Text
-                  style={
-                    styles.emptySubtitle
-                  }
-                >
-                  Todos los pedidos han sido entregados
-                </Text>
-
-              </View>
-
-            )
-
-            : (
-
-              pedidos.map(
-                (pedido) => (
-
-                  <View
-
-                    key={
-                      pedido.id
-                    }
-
-                    style={
-                      styles.pedidoCard
-                    }
-
-                  >
-
-
-                    {/* CABECERA */}
-
-                    <View
-                      style={
-                        styles.pedidoHeader
-                      }
-                    >
-
-                      <View>
-
-                        <Text
-                          style={
-                            styles.folio
-                          }
-                        >
-                          {pedido.folio}
-                        </Text>
-
-
-                        <Text
-                          style={
-                            styles.fecha
-                          }
-                        >
-                          {formatearFecha(
-                            pedido.fecha
-                          )}
-                        </Text>
-
-                      </View>
-
-
-                      <View
-                        style={
-                          styles.estadoBadge
-                        }
-                      >
-
-                        <Text
-                          style={
-                            styles.estadoText
-                          }
-                        >
-                          ⏳ PENDIENTE
-                        </Text>
-
-                      </View>
-
-                    </View>
-
-
-                    {/* CLIENTE */}
-
-                    <View
-                      style={
-                        styles.section
-                      }
-                    >
-
-                      <Text
-                        style={
-                          styles.sectionLabel
-                        }
-                      >
-                        👤 CLIENTE
-                      </Text>
-
-
-                      <Text
-                        style={
-                          styles.clienteNombre
-                        }
-                      >
-                        {pedido.nombreCliente ||
-                          'Sin nombre'}
-                      </Text>
-
-                    </View>
-
-
-                    {/* PRODUCTOS */}
-
-                    <View
-                      style={
-                        styles.section
-                      }
-                    >
-
-                      <Text
-                        style={
-                          styles.sectionLabel
-                        }
-                      >
-                        ☕ PRODUCTOS
-                      </Text>
-
-
-                      {
-                        pedido.detalles?.map(
-                          (
-                            detalle,
-                            index
-                          ) => (
-
-                            <View
-
-                              key={
-                                detalle.id ||
-                                index
-                              }
-
-                              style={
-                                styles.productoRow
-                              }
-
-                            >
-
-                              <View
-                                style={
-                                  styles.productoInfo
-                                }
-                              >
-
-                                <Text
-                                  style={
-                                    styles.productoNombre
-                                  }
-                                >
-                                  {detalle.cantidad}x{' '}
-                                  {
-                                    detalle.productoNombre
-                                  }
-                                </Text>
-
-
-                                <Text
-                                  style={
-                                    styles.productoPrecioUnitario
-                                  }
-                                >
-                                  $
-                                  {Number(
-                                    detalle.precioUnitario ||
-                                    0
-                                  ).toFixed(2)}
-                                  {' '}c/u
-                                </Text>
-
-                              </View>
-
-
-                              <Text
-                                style={
-                                  styles.productoSubtotal
-                                }
-                              >
-                                $
-                                {Number(
-                                  detalle.subtotal ||
-                                  0
-                                ).toFixed(2)}
-                              </Text>
-
-                            </View>
-
-                          )
-                        )
-                      }
-
-                    </View>
-
-
-                    {/* RESUMEN */}
-
-                    <View
-                      style={
-                        styles.resumen
-                      }
-                    >
-
-                      <View
-                        style={
-                          styles.resumenRow
-                        }
-                      >
-
-                        <Text
-                          style={
-                            styles.resumenLabel
-                          }
-                        >
-                          Subtotal
-                        </Text>
-
-
-                        <Text
-                          style={
-                            styles.resumenValue
-                          }
-                        >
-                          $
-                          {Number(
-                            pedido.subtotal ||
-                            0
-                          ).toFixed(2)}
-                        </Text>
-
-                      </View>
-
-
-                      <View
-                        style={
-                          styles.resumenRow
-                        }
-                      >
-
-                        <Text
-                          style={
-                            styles.resumenLabel
-                          }
-                        >
-                          IVA
-                        </Text>
-
-
-                        <Text
-                          style={
-                            styles.resumenValue
-                          }
-                        >
-                          $
-                          {Number(
-                            pedido.impuestos ||
-                            0
-                          ).toFixed(2)}
-                        </Text>
-
-                      </View>
-
-
-                      <View
-
-                        style={[
-                          styles.resumenRow,
-                          styles.totalRow,
-                        ]}
-
-                      >
-
-                        <Text
-                          style={
-                            styles.totalLabel
-                          }
-                        >
-                          TOTAL
-                        </Text>
-
-
-                        <Text
-                          style={
-                            styles.totalValue
-                          }
-                        >
-                          $
-                          {Number(
-                            pedido.total ||
-                            0
-                          ).toFixed(2)}
-                          {' '}MXN
-                        </Text>
-
-                      </View>
-
-                    </View>
-
-
-                    {/* INFO */}
-
-                    <View
-                      style={
-                        styles.infoBox
-                      }
-                    >
-
-                      <Text
-                        style={
-                          styles.infoText
-                        }
-                      >
-                        💳 Pago:{' '}
-                        {
-                          pedido.metodoPago ===
-                          'efectivo'
-
-                            ? 'Efectivo'
-
-                            : 'Tarjeta'
-                        }
-                      </Text>
-
-
-                      <Text
-                        style={
-                          styles.infoText
-                        }
-                      >
-                        👨‍💼 Cajero:{' '}
-                        {
-                          pedido.usuarioNombre ||
-                          'Sin información'
-                        }
-                      </Text>
-
-                    </View>
-
-
-                    {/* ENTREGAR */}
-
-                    <TouchableOpacity
-
-                      style={[
-                        styles.entregarButton,
-
-                        entregandoId ===
-                          pedido.id && {
-                          opacity: 0.6,
-                        },
-                      ]}
-
-                      disabled={
-                        entregandoId ===
-                        pedido.id
-                      }
-
-                      onPress={() =>
-                        marcarEntregado(
-                          pedido
-                        )
-                      }
-
-                    >
-
-                      {
-                        entregandoId ===
-                        pedido.id
-
-                          ? (
-
-                            <ActivityIndicator
-                              color={
-                                colors.white
-                              }
-                            />
-
-                          )
-
-                          : (
-
-                            <Text
-                              style={
-                                styles.entregarButtonText
-                              }
-                            >
-                              ✅ Marcar como entregado
-                            </Text>
-
-                          )
-                      }
-
-                    </TouchableOpacity>
-
-                  </View>
-
-                )
-              )
-
-            )
-        }
-
-      </ScrollView>
-
-    </View>
-
+    } finally {
+      setCargando(false);
+      setRefrescando(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      cargarPedidos();
+      cargarResumenHoy();
+    }, [])
   );
 
+  const abrirConfirmacion = (pedido) => {
+    setPedidoSeleccionado(pedido);
+    setGarrafones('1');
+    setEnvasesVacios('0');
+    setMetodoCobro('EFECTIVO');
+    setMontoCobrado(String(Number(pedido.total || 0).toFixed(2)));
+    setObservaciones('');
+    setModalVisible(true);
+  };
+
+  const confirmarEntrega = async () => {
+    if (!repartidorId) {
+      Alert.alert('Error', 'No se pudo identificar al repartidor.');
+      return;
+    }
+
+    const cantidad = Number(garrafones);
+    const vacios = Number(envasesVacios);
+    const cobrado = Number(montoCobrado);
+
+    if (!cantidad || cantidad <= 0) {
+      Alert.alert('Dato inválido', 'Ingresa los garrafones entregados.');
+      return;
+    }
+
+    if (vacios < 0 || cobrado < 0) {
+      Alert.alert('Dato inválido', 'Los valores no pueden ser negativos.');
+      return;
+    }
+
+    try {
+      setGuardando(true);
+
+      // Validar primero que el repartidor tenga una carga aceptada
+      // y suficientes garrafones disponibles. Esto evita un 400 poco claro.
+      const cargasRes = await api.get(`/cargas/repartidor/${repartidorId}`);
+      const cargasData = cargasRes?.data;
+      const listaCargas = Array.isArray(cargasData)
+        ? cargasData
+        : Array.isArray(cargasData?.data)
+          ? cargasData.data
+          : Array.isArray(cargasData?.cargas)
+            ? cargasData.cargas
+            : [];
+
+      const cargasActivas = listaCargas.filter((carga) => {
+        const estado = String(carga?.estado || '')
+          .toUpperCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+
+        return estado === 'CARGA EN TRANSITO';
+      });
+
+      const disponibleTotal = cargasActivas.reduce((total, carga) => {
+        const disponible = Number(
+          carga?.cantidadDisponible ?? carga?.cantidad ?? 0
+        );
+        return total + (Number.isFinite(disponible) ? disponible : 0);
+      }, 0);
+
+      if (disponibleTotal + 0.0001 < cantidad) {
+        Alert.alert(
+          'Carga insuficiente',
+          disponibleTotal > 0
+            ? `Tienes ${disponibleTotal} garrafón(es) disponibles y quieres entregar ${cantidad}.`
+            : 'No tienes una carga activa. Ve a Cargas, acepta una carga y vuelve a intentar.'
+        );
+        return;
+      }
+
+      const payload = {
+        repartidorId: Number(repartidorId),
+        garrafonesEntregados: cantidad,
+        envasesVaciosRecibidos: vacios,
+        metodoCobro,
+        montoCobrado: cobrado,
+        observaciones: observaciones.trim(),
+      };
+
+      console.log('Confirmando entrega:', {
+        pedidoId: pedidoSeleccionado.id,
+        ...payload,
+      });
+
+      await api.put(
+        `/ventas/${pedidoSeleccionado.id}/confirmar-entrega`,
+        payload
+      );
+
+      setPedidos((actuales) =>
+        actuales.filter((p) => p.id !== pedidoSeleccionado.id)
+      );
+      setModalVisible(false);
+      cargarResumenHoy();
+
+      Alert.alert(
+        'Entrega confirmada',
+        'Se descontó la carga y se registró el cobro correctamente.'
+      );
+    } catch (error) {
+      const data = error?.response?.data;
+
+      // Usamos console.log en lugar de console.error para evitar que Expo
+      // muestre la pantalla roja por un error HTTP controlado (400).
+      console.log('Entrega rechazada por la API:', data || error?.message);
+
+      let mensaje =
+        data?.error ||
+        data?.message ||
+        data?.mensaje ||
+        'No se pudo confirmar la entrega.';
+
+      if (Array.isArray(data?.errors) && data.errors.length > 0) {
+        mensaje =
+          data.errors[0]?.defaultMessage ||
+          data.errors[0]?.message ||
+          mensaje;
+      }
+
+      Alert.alert('No se pudo confirmar', mensaje);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const reportarIncidencia = (pedido) => {
+    if (!repartidorId) {
+      Alert.alert('Error', 'No se pudo identificar al repartidor.');
+      return;
+    }
+
+    const enviar = async (motivo) => {
+      try {
+        await api.put(`/ventas/${pedido.id}/reportar-incidencia`, {
+          repartidorId: Number(repartidorId),
+          motivo,
+          observaciones: '',
+        });
+
+        setPedidos((actuales) => actuales.filter((p) => p.id !== pedido.id));
+        Alert.alert('Incidencia registrada', 'El reporte quedó guardado.');
+      } catch (error) {
+        Alert.alert(
+          'Error',
+          error.response?.data?.error || 'No se pudo registrar la incidencia.'
+        );
+      }
+    };
+
+    Alert.alert(
+      'Reportar incidencia',
+      `Pedido ${pedido.folio || pedido.id}`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Cliente ausente',
+          onPress: () => enviar('CLIENTE_AUSENTE'),
+        },
+        {
+          text: 'Sin envases',
+          onPress: () => enviar('SIN_ENVASES'),
+        },
+      ]
+    );
+  };
+
+  const moneda = (valor) => `$${Number(valor || 0).toFixed(2)}`;
+
+  if (cargando) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={colors.secondary} />
+        <Text style={styles.loadingText}>Cargando pedidos...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>📦 Pedidos por entregar</Text>
+        <Text style={styles.headerSubtitle}>HU-015 · Confirma entrega y cobro</Text>
+      </View>
+
+      {resumenHoy && (
+        <View style={styles.balanceBar}>
+          <View>
+            <Text style={styles.balanceLabel}>Cobrado hoy</Text>
+            <Text style={styles.balanceValue}>{moneda(resumenHoy.totalCobrado)}</Text>
+          </View>
+          <View style={styles.balanceRight}>
+            <Text style={styles.balanceSmall}>💵 {moneda(resumenHoy.totalEfectivo)}</Text>
+            <Text style={styles.balanceSmall}>🏦 {moneda(resumenHoy.totalTransferencias)}</Text>
+          </View>
+        </View>
+      )}
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl
+            refreshing={refrescando}
+            onRefresh={() => {
+              setRefrescando(true);
+              cargarPedidos(false);
+            }}
+          />
+        }
+      >
+        {pedidos.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyEmoji}>✅</Text>
+            <Text style={styles.emptyTitle}>No hay pedidos pendientes</Text>
+            <Text style={styles.emptyText}>
+              Cuando exista un pedido aparecerá aquí.
+            </Text>
+          </View>
+        ) : (
+          pedidos.map((pedido) => (
+            <View key={pedido.id} style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View>
+                  <Text style={styles.folio}>{pedido.folio || `Pedido #${pedido.id}`}</Text>
+                  <Text style={styles.client}>
+                    👤 {pedido.nombreCliente || 'Cliente sin nombre'}
+                  </Text>
+                </View>
+                <Text style={styles.total}>{moneda(pedido.total)}</Text>
+              </View>
+
+              <View style={styles.divider} />
+
+              {pedido.detalles?.map((detalle, index) => (
+                <Text key={detalle.id || index} style={styles.itemText}>
+                  {detalle.cantidad} × {detalle.productoNombre}
+                </Text>
+              ))}
+
+              <Text style={styles.meta}>
+                Pago del pedido: {pedido.metodoPago || 'Sin dato'}
+              </Text>
+
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={() => abrirConfirmacion(pedido)}
+              >
+                <Text style={styles.primaryButtonText}>✅ Confirmar entrega</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={() => reportarIncidencia(pedido)}
+              >
+                <Text style={styles.secondaryButtonText}>⚠️ Reportar incidencia</Text>
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
+      </ScrollView>
+
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Confirmar entrega</Text>
+            <Text style={styles.modalSubtitle}>
+              {pedidoSeleccionado?.folio || ''} · {pedidoSeleccionado?.nombreCliente || 'Cliente'}
+            </Text>
+
+            <Text style={styles.label}>Garrafones entregados</Text>
+            <TextInput
+              value={garrafones}
+              onChangeText={setGarrafones}
+              keyboardType="numeric"
+              style={styles.input}
+              placeholder="Ej. 4"
+            />
+
+            <Text style={styles.label}>Envases vacíos recibidos</Text>
+            <TextInput
+              value={envasesVacios}
+              onChangeText={setEnvasesVacios}
+              keyboardType="numeric"
+              style={styles.input}
+              placeholder="Ej. 4"
+            />
+
+            <Text style={styles.label}>Forma de cobro</Text>
+            <View style={styles.methodRow}>
+              {['EFECTIVO', 'TRANSFERENCIA'].map((metodo) => (
+                <TouchableOpacity
+                  key={metodo}
+                  style={[
+                    styles.methodButton,
+                    metodoCobro === metodo && styles.methodButtonActive,
+                  ]}
+                  onPress={() => setMetodoCobro(metodo)}
+                >
+                  <Text
+                    style={[
+                      styles.methodText,
+                      metodoCobro === metodo && styles.methodTextActive,
+                    ]}
+                  >
+                    {metodo === 'EFECTIVO' ? '💵 Efectivo' : '🏦 Transferencia'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.label}>Pago cobrado</Text>
+            <TextInput
+              value={montoCobrado}
+              onChangeText={setMontoCobrado}
+              keyboardType="decimal-pad"
+              style={styles.input}
+              placeholder="0.00"
+            />
+
+            <Text style={styles.label}>Observaciones</Text>
+            <TextInput
+              value={observaciones}
+              onChangeText={setObservaciones}
+              style={[styles.input, styles.multiline]}
+              multiline
+              placeholder="Opcional"
+            />
+
+            <TouchableOpacity
+              style={[styles.primaryButton, guardando && styles.disabled]}
+              onPress={confirmarEntrega}
+              disabled={guardando}
+            >
+              <Text style={styles.primaryButtonText}>
+                {guardando ? 'Guardando...' : 'Confirmar entrega'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setModalVisible(false)}
+              disabled={guardando}
+            >
+              <Text style={styles.cancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
 }
 
-
-// =========================================
-// ESTILOS
-// =========================================
-
-const styles =
-  StyleSheet.create({
-
-    container: {
-
-      flex: 1,
-
-      backgroundColor:
-        colors.background,
-
-    },
-
-
-    header: {
-
-      paddingTop: 55,
-
-      paddingBottom: 18,
-
-      paddingHorizontal: 20,
-
-      flexDirection: 'row',
-
-      alignItems: 'center',
-
-      justifyContent:
-        'space-between',
-
-    },
-
-
-    headerContent: {
-
-      flex: 1,
-
-    },
-
-
-    headerTitle: {
-
-      color:
-        colors.white,
-
-      fontSize: 24,
-
-      fontWeight:
-        'bold',
-
-    },
-
-
-    headerSubtitle: {
-
-      color:
-        'rgba(255,255,255,0.7)',
-
-      marginTop: 3,
-
-      fontSize: 13,
-
-    },
-
-
-    counter: {
-
-      minWidth: 42,
-
-      height: 42,
-
-      borderRadius: 21,
-
-      backgroundColor:
-        'rgba(255,255,255,0.15)',
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
-    },
-
-
-    counterText: {
-
-      color:
-        colors.white,
-
-      fontSize: 17,
-
-      fontWeight:
-        'bold',
-
-    },
-
-
-    scroll: {
-
-      padding: 16,
-
-      paddingBottom: 40,
-
-    },
-
-
-    centered: {
-
-      flex: 1,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
-    },
-
-
-    loadingText: {
-
-      marginTop: 12,
-
-      color:
-        colors.textSecondary,
-
-    },
-
-
-    emptyContainer: {
-
-      paddingTop: 100,
-
-      alignItems:
-        'center',
-
-      paddingHorizontal: 30,
-
-    },
-
-
-    emptyEmoji: {
-
-      fontSize: 60,
-
-      marginBottom: 15,
-
-    },
-
-
-    emptyTitle: {
-
-      color:
-        colors.textPrimary,
-
-      fontSize: 20,
-
-      fontWeight:
-        'bold',
-
-      textAlign:
-        'center',
-
-    },
-
-
-    emptySubtitle: {
-
-      color:
-        colors.textSecondary,
-
-      fontSize: 14,
-
-      textAlign:
-        'center',
-
-      marginTop: 6,
-
-    },
-
-
-    pedidoCard: {
-
-      backgroundColor:
-        colors.white,
-
-      borderRadius: 20,
-
-      padding: 17,
-
-      marginBottom: 16,
-
-      shadowColor:
-        '#000',
-
-      shadowOffset: {
-        width: 0,
-        height: 3,
-      },
-
-      shadowOpacity: 0.08,
-
-      shadowRadius: 10,
-
-      elevation: 3,
-
-    },
-
-
-    pedidoHeader: {
-
-      flexDirection:
-        'row',
-
-      justifyContent:
-        'space-between',
-
-      alignItems:
-        'flex-start',
-
-      marginBottom: 14,
-
-    },
-
-
-    folio: {
-
-      color:
-        colors.primary,
-
-      fontSize: 19,
-
-      fontWeight:
-        'bold',
-
-    },
-
-
-    fecha: {
-
-      color:
-        colors.textSecondary,
-
-      fontSize: 11,
-
-      marginTop: 3,
-
-    },
-
-
-    estadoBadge: {
-
-      backgroundColor:
-        '#FFF4E5',
-
-      paddingHorizontal: 10,
-
-      paddingVertical: 6,
-
-      borderRadius: 20,
-
-    },
-
-
-    estadoText: {
-
-      color: '#B26A00',
-
-      fontSize: 11,
-
-      fontWeight:
-        'bold',
-
-    },
-
-
-    section: {
-
-      borderTopWidth: 1,
-
-      borderTopColor:
-        colors.surface,
-
-      paddingTop: 12,
-
-      marginTop: 4,
-
-      marginBottom: 10,
-
-    },
-
-
-    sectionLabel: {
-
-      color:
-        colors.textSecondary,
-
-      fontSize: 10,
-
-      fontWeight:
-        'bold',
-
-      letterSpacing: 1,
-
-      marginBottom: 7,
-
-    },
-
-
-    clienteNombre: {
-
-      color:
-        colors.textPrimary,
-
-      fontSize: 17,
-
-      fontWeight:
-        '600',
-
-    },
-
-
-    productoRow: {
-
-      flexDirection:
-        'row',
-
-      justifyContent:
-        'space-between',
-
-      alignItems:
-        'center',
-
-      paddingVertical: 6,
-
-    },
-
-
-    productoInfo: {
-
-      flex: 1,
-
-    },
-
-
-    productoNombre: {
-
-      color:
-        colors.textPrimary,
-
-      fontSize: 14,
-
-      fontWeight:
-        '600',
-
-    },
-
-
-    productoPrecioUnitario: {
-
-      color:
-        colors.textSecondary,
-
-      fontSize: 11,
-
-      marginTop: 2,
-
-    },
-
-
-    productoSubtotal: {
-
-      color:
-        colors.textPrimary,
-
-      fontWeight:
-        'bold',
-
-      marginLeft: 10,
-
-    },
-
-
-    resumen: {
-
-      backgroundColor:
-        colors.background,
-
-      borderRadius: 14,
-
-      padding: 12,
-
-      marginTop: 5,
-
-    },
-
-
-    resumenRow: {
-
-      flexDirection:
-        'row',
-
-      justifyContent:
-        'space-between',
-
-      marginBottom: 6,
-
-    },
-
-
-    resumenLabel: {
-
-      color:
-        colors.textSecondary,
-
-      fontSize: 13,
-
-    },
-
-
-    resumenValue: {
-
-      color:
-        colors.textPrimary,
-
-      fontSize: 13,
-
-    },
-
-
-    totalRow: {
-
-      borderTopWidth: 1,
-
-      borderTopColor:
-        colors.surface,
-
-      paddingTop: 8,
-
-      marginTop: 3,
-
-    },
-
-
-    totalLabel: {
-
-      color:
-        colors.textPrimary,
-
-      fontSize: 15,
-
-      fontWeight:
-        'bold',
-
-    },
-
-
-    totalValue: {
-
-      color:
-        colors.secondary,
-
-      fontSize: 16,
-
-      fontWeight:
-        'bold',
-
-    },
-
-
-    infoBox: {
-
-      marginTop: 12,
-
-      marginBottom: 13,
-
-    },
-
-
-    infoText: {
-
-      color:
-        colors.textSecondary,
-
-      fontSize: 12,
-
-      marginBottom: 4,
-
-    },
-
-
-    entregarButton: {
-
-      backgroundColor:
-        colors.success,
-
-      borderRadius: 14,
-
-      paddingVertical: 14,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
-    },
-
-
-    entregarButtonText: {
-
-      color:
-        colors.white,
-
-      fontSize: 14,
-
-      fontWeight:
-        'bold',
-
-    },
-
-  });
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+  loadingText: {
+    marginTop: 10,
+    color: colors.textSecondary,
+  },
+  header: {
+    backgroundColor: colors.primary,
+    padding: 20,
+  },
+  headerTitle: {
+    color: colors.white,
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  headerSubtitle: {
+    marginTop: 4,
+    color: '#E9D8C8',
+  },
+  balanceBar: {
+    margin: 16,
+    marginBottom: 0,
+    backgroundColor: colors.white,
+    borderRadius: 14,
+    padding: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  balanceLabel: {
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
+  balanceValue: {
+    marginTop: 2,
+    color: colors.primary,
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  balanceRight: {
+    alignItems: 'flex-end',
+  },
+  balanceSmall: {
+    color: colors.textSecondary,
+    fontWeight: '700',
+    fontSize: 12,
+    marginVertical: 1,
+  },
+  scroll: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 14,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  folio: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  client: {
+    marginTop: 5,
+    color: colors.textSecondary,
+  },
+  total: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.secondary,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E7DDD4',
+    marginVertical: 12,
+  },
+  itemText: {
+    color: colors.textPrimary,
+    marginBottom: 5,
+  },
+  meta: {
+    marginTop: 8,
+    color: colors.textSecondary,
+  },
+  primaryButton: {
+    marginTop: 14,
+    backgroundColor: colors.secondary,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    color: colors.white,
+    fontWeight: '800',
+  },
+  secondaryButton: {
+    marginTop: 9,
+    borderWidth: 1,
+    borderColor: '#D1A381',
+    borderRadius: 12,
+    padding: 13,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  emptyCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 30,
+    alignItems: 'center',
+  },
+  emptyEmoji: {
+    fontSize: 42,
+  },
+  emptyTitle: {
+    marginTop: 10,
+    fontSize: 19,
+    fontWeight: '800',
+  },
+  emptyText: {
+    marginTop: 6,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  modalCard: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '92%',
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  modalSubtitle: {
+    marginTop: 4,
+    marginBottom: 12,
+    color: colors.textSecondary,
+  },
+  label: {
+    marginTop: 10,
+    marginBottom: 6,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#D7C9BD',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    backgroundColor: '#FFFDF9',
+  },
+  multiline: {
+    minHeight: 70,
+    textAlignVertical: 'top',
+  },
+  methodRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  methodButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#D7C9BD',
+    borderRadius: 10,
+    padding: 11,
+    alignItems: 'center',
+  },
+  methodButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  methodText: {
+    color: colors.textPrimary,
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  methodTextActive: {
+    color: colors.white,
+  },
+  cancelButton: {
+    padding: 14,
+    alignItems: 'center',
+  },
+  cancelText: {
+    color: colors.textSecondary,
+    fontWeight: '700',
+  },
+  disabled: {
+    opacity: 0.55,
+  },
+});
