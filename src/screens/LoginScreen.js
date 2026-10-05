@@ -111,20 +111,28 @@ export default function LoginScreen({ navigation }) {
             const responseData = await response.json();
             const usuario = getUserFromResponse(responseData, trimmedEmail);
 
+
             if (!usuario || (!usuario.id && !usuario.email && !usuario.nombre)) {
               continue;
             }
 
             const roleName = usuario.rol ?? usuario.role ?? selectedRole;
             const normalized = normalizeRole(roleName);
-            const destino = normalized.includes('repart') ? 'CargasRepartidor' : 'Main';
+            const destino = normalized.includes('repart') ? 'RepartidorHome' : 'Main';
 
-            iniciarSesion({
-              ...usuario,
-              nombre: usuario.nombre ?? 'Usuario',
-              email: usuario.email ?? trimmedEmail,
-              rol: roleName ?? selectedRole,
-            });
+            // DESPUÉS — extrae el token de la respuesta y lo pasa al contexto
+            const token = responseData?.token ?? null;
+
+            await iniciarSesion(
+              {
+                ...usuario,
+                nombre: usuario.nombre ?? 'Usuario',
+                email: usuario.email ?? trimmedEmail,
+                rol: roleName ?? selectedRole,
+              },
+              token
+            );
+
 
             navigation.reset({
               index: 0,
@@ -156,7 +164,7 @@ export default function LoginScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#3D1A00', '#6B3A1F', '#3D1A00']}
+        colors={['#0F1B2D', '#1A2332', '#0F1B2D']}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -302,17 +310,17 @@ const styles = StyleSheet.create({
   },
   decorCircle1: {
     width: 300, height: 300,
-    backgroundColor: '#C8763A',
+    backgroundColor: '#0073BB',
     top: -80, right: -80,
   },
   decorCircle2: {
     width: 200, height: 200,
-    backgroundColor: '#3D1A00',
+    backgroundColor: '#FF9900',
     top: 100, left: -60,
   },
   decorCircle3: {
     width: 150, height: 150,
-    backgroundColor: '#3D1A00',
+    backgroundColor: '#0073BB',
     top: 220, right: 20,
   },
   scroll: {
@@ -327,9 +335,9 @@ const styles = StyleSheet.create({
   },
   illustrationMain: {
     width: 110, height: 110, borderRadius: 35,
-    backgroundColor: 'rgba(245, 166, 35, 0.3)',
+    backgroundColor: 'rgba(0, 115, 187, 0.3)',
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: 'rgba(245, 166, 35, 0.5)',
+    borderWidth: 2, borderColor: 'rgba(255, 153, 0, 0.5)',
     marginBottom: 16,
   },
   illustrationEmoji: {
@@ -356,7 +364,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   formCard: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
     padding: 28,
@@ -370,7 +378,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: colors.primary,
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   subtitle: {
@@ -389,7 +397,9 @@ const styles = StyleSheet.create({
   input: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -425,7 +435,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   dropdown: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: 16,
     marginTop: 6,
     overflow: 'hidden',
@@ -441,7 +453,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: colors.background,
+    borderBottomColor: colors.border,
   },
   dropdownItemActive: {
     backgroundColor: colors.surface,

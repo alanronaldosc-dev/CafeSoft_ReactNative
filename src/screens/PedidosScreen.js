@@ -3,6 +3,8 @@ import React, {
   useCallback,
   useEffect,
 } from 'react';
+import { BASE_URL } from '../config/api';
+import { useAuth } from '../context/AuthContext';
 
 import {
   View,
@@ -21,11 +23,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import colors from '../theme/colors';
 
 
-import { BASE_URL } from '../config/api';
+
 
 
 export default function PedidosScreen() {
-
+  const { getToken } = useAuth();
+  
   const [
     pedidos,
     setPedidos,
@@ -61,10 +64,18 @@ export default function PedidosScreen() {
         }
 
 
-        const response =
-          await fetch(
-            `${BASE_URL}/ventas/pedidos/pendientes`
-          );
+    const token = await getToken();
+
+    const response = await fetch(
+      `${BASE_URL}/ventas/pedidos/pendientes`,
+      {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
 
 
         if (!response.ok) {
@@ -103,6 +114,12 @@ export default function PedidosScreen() {
           'ERROR PEDIDOS:',
           error
         );
+
+          console.error('Status:', error.message);  // ya existe
+  // Agrega esto:
+  if (error.response) {
+    console.error('Respuesta:', error.response.status, error.response.data);
+  }
 
 
         Alert.alert(
@@ -200,19 +217,19 @@ export default function PedidosScreen() {
                   );
 
 
-                  const response =
-                    await fetch(
-                      `${BASE_URL}/ventas/${pedido.id}/entregar`,
-                      {
-                        method:
-                          'PUT',
+                  const token = await getToken();
 
-                        headers: {
-                          Accept:
-                            'application/json',
-                        },
-                      }
-                    );
+                  const response = await fetch(
+                    `${BASE_URL}/ventas/${pedido.id}/entregar`,
+                    {
+                      method: 'PUT',
+                      headers: {
+                        Accept: 'application/json',
+                        Authorization: token ? `Bearer ${token}` : '',
+                      },
+                    }
+                  );
+
 
 
                   if (
@@ -328,8 +345,8 @@ export default function PedidosScreen() {
         <LinearGradient
 
           colors={[
-            '#3D1A00',
-            '#6B3A1F',
+            '#0F1B2D',
+            '#0073BB',
           ]}
 
           style={
@@ -409,8 +426,8 @@ export default function PedidosScreen() {
       <LinearGradient
 
         colors={[
-          '#3D1A00',
-          '#6B3A1F',
+          '#0F1B2D',
+          '#0073BB',
         ]}
 
         style={
@@ -1137,7 +1154,12 @@ const styles =
     pedidoCard: {
 
       backgroundColor:
-        colors.white,
+        colors.surface,
+
+      borderWidth: 1,
+
+      borderColor:
+        colors.border,
 
       borderRadius: 20,
 
@@ -1206,7 +1228,7 @@ const styles =
     estadoBadge: {
 
       backgroundColor:
-        '#FFF4E5',
+        '#1A1500',
 
       paddingHorizontal: 10,
 
@@ -1219,7 +1241,7 @@ const styles =
 
     estadoText: {
 
-      color: '#B26A00',
+      color: '#FF9900',
 
       fontSize: 11,
 
@@ -1339,7 +1361,7 @@ const styles =
     resumen: {
 
       backgroundColor:
-        colors.background,
+        colors.surfaceAlt,
 
       borderRadius: 14,
 
@@ -1388,7 +1410,7 @@ const styles =
       borderTopWidth: 1,
 
       borderTopColor:
-        colors.surface,
+        colors.border,
 
       paddingTop: 8,
 
@@ -1447,7 +1469,7 @@ const styles =
     entregarButton: {
 
       backgroundColor:
-        colors.success,
+        '#1D8348',
 
       borderRadius: 14,
 

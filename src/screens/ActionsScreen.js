@@ -249,7 +249,9 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
@@ -265,7 +267,7 @@ const styles = StyleSheet.create({
   cardIconContainer: {
     width: 48,
     height: 48,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceAlt,  
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
