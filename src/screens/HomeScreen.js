@@ -27,7 +27,7 @@ export default function HomeScreen() {
 
       {/* Header con gradiente */}
       <LinearGradient
-        colors={['#3D1A00', '#6B3A1F']}
+        colors={['#0F1B2D', '#0073BB']}
         style={styles.header}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -210,24 +210,20 @@ const styles = StyleSheet.create({
   bannerSub: { color: 'rgba(255,255,255,0.75)', fontSize: 13 },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
   statCard: {
-    flex: 1, backgroundColor: colors.white, borderRadius: 16,
+    flex: 1, backgroundColor: colors.surface, borderRadius: 16,
     padding: 14, alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+    borderWidth: 1, borderColor: colors.border,
   },
-  statNumber: { fontSize: 18, fontWeight: 'bold', color: colors.primary },
+  statNumber: { fontSize: 18, fontWeight: 'bold', color: colors.secondary },
   statLabel: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.primary },
-  sectionDot: { flex: 1, height: 2, backgroundColor: colors.surface, borderRadius: 2 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.secondary },
+  sectionDot: { flex: 1, height: 2, backgroundColor: colors.border, borderRadius: 2 },
   featuredCard: {
-    backgroundColor: colors.white, borderRadius: 18,
+    backgroundColor: colors.surface, borderRadius: 18,
     padding: 14, flexDirection: 'row',
     alignItems: 'center', marginBottom: 10, gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.07, shadowRadius: 10, elevation: 3,
+    borderWidth: 1, borderColor: colors.border,
   },
   featuredEmojiContainer: {
     width: 56, height: 56, borderRadius: 18,
@@ -246,12 +242,10 @@ const styles = StyleSheet.create({
   addButton: { width: 36, height: 36, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   addButtonText: { color: colors.white, fontSize: 22, fontWeight: 'bold', lineHeight: 26 },
   newsCard: {
-    backgroundColor: colors.white, borderRadius: 18,
+    backgroundColor: colors.surface, borderRadius: 18,
     padding: 14, flexDirection: 'row',
     alignItems: 'center', marginBottom: 10, gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+    borderWidth: 1, borderColor: colors.border,
   },
   newsIconContainer: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   newsEmoji: { fontSize: 24 },
@@ -261,9 +255,8 @@ const styles = StyleSheet.create({
   newsArrow: { fontSize: 24, color: colors.textSecondary },
   infoCard: {
     borderRadius: 20, padding: 18, marginTop: 8, gap: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+    backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border,
   },
   infoTitle: { fontSize: 15, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 6 },
   infoText: { fontSize: 14, color: colors.textSecondary },

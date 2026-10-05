@@ -23,12 +23,13 @@ const api = axios.create({
 });
 
 
+
 function CargasRepartidor({ navigation }) {
   // ============================================
   // USUARIO AUTENTICADO
   // ============================================
 
-  const { usuario, cerrarSesion } = useAuth();
+  const { usuario, cerrarSesion, getToken } = useAuth();
 
   // ============================================
   // ESTADOS
@@ -112,9 +113,18 @@ function CargasRepartidor({ navigation }) {
         repartidorId
       );
 
+      const token = await getToken();
+
       const response = await api.get(
-        `/cargas/repartidor/${repartidorId}/pendientes`
+        `/cargas/repartidor/${repartidorId}/pendientes`,
+        {
+          headers: {
+            Authorization: token ? `Bearer ${token}` : '',
+          },
+        }
       );
+
+
 
       console.log(
         "Respuesta cargas pendientes:",
@@ -194,7 +204,7 @@ function CargasRepartidor({ navigation }) {
 
   const aceptarCarga = (carga) => {
     Alert.alert(
-      "Aceptar carga",
+      "Iniciar ruta",
       `¿Confirmas que recibiste ${carga.cantidad} ${
         carga.unidadMedida || "unidades"
       } de ${
@@ -225,43 +235,36 @@ function CargasRepartidor({ navigation }) {
       setAceptandoId(carga.id);
       setError("");
 
-      console.log(
-        "Aceptando carga:",
-        carga.id
-      );
+      console.log("Aceptando carga:", carga.id);
+
+      const token = await getToken();
 
       const response = await api.put(
-        `/cargas/${carga.id}/aceptar`
+        `/cargas/${carga.id}/aceptar`,
+        {},
+        {
+          headers: {
+            Authorization: token ? `Bearer ${token}` : '',
+          },
+        }
       );
 
-      console.log(
-        "Respuesta aceptar carga:",
-        response.data
-      );
+      console.log("Respuesta aceptar carga:", response.data);
 
       Alert.alert(
-        "Carga aceptada",
-        "La carga fue aceptada correctamente y ahora se encuentra en tránsito.",
+        "Ruta iniciada",
+        "La ruta fue iniciada correctamente y ahora se encuentra en tránsito.",
         [
           {
             text: "Continuar",
-            onPress: () => {
-              cargarCargas(true);
-            },
+            onPress: () => { cargarCargas(true); },
           },
         ]
       );
 
     } catch (err) {
-      console.error(
-        "Error al aceptar carga:",
-        err
-      );
-
-      console.error(
-        "Respuesta del servidor:",
-        err.response?.data
-      );
+      console.error("Error al aceptar carga:", err);
+      console.error("Respuesta del servidor:", err.response?.data);
 
       const mensaje =
         err.response?.data?.message ||
@@ -269,10 +272,7 @@ function CargasRepartidor({ navigation }) {
         err.response?.data?.error ||
         "No se pudo aceptar la carga.";
 
-      Alert.alert(
-        "Error",
-        mensaje
-      );
+      Alert.alert("Error", mensaje);
 
     } finally {
       setAceptandoId(null);
@@ -376,7 +376,7 @@ function CargasRepartidor({ navigation }) {
       <View style={styles.cargandoContainer}>
         <ActivityIndicator
           size="large"
-          color="#7a4e39"
+          color="#FF9900"
         />
 
         <Text style={styles.cargandoTexto}>
@@ -471,7 +471,7 @@ function CargasRepartidor({ navigation }) {
         </Text>
 
         <Text style={styles.bienvenidaTexto}>
-          Revisa la carga asignada por el encargado
+          Revisa la ruta asignada por el encargado
           antes de iniciar tu ruta.
         </Text>
       </View>
@@ -517,8 +517,8 @@ function CargasRepartidor({ navigation }) {
           <RefreshControl
             refreshing={actualizando}
             onRefresh={() => cargarCargas(true)}
-            colors={["#7a4e39"]}
-            tintColor="#7a4e39"
+            colors={["#FF9900"]}
+            tintColor="#FF9900"
           />
         }
         showsVerticalScrollIndicator={false}
@@ -532,11 +532,11 @@ function CargasRepartidor({ navigation }) {
 
           <View>
             <Text style={styles.resumenTitulo}>
-              Cargas pendientes
+              Rutas pendientes de iniciar
             </Text>
 
             <Text style={styles.resumenSubtitulo}>
-              Asignaciones por confirmar
+              Rutas por iniciar
             </Text>
           </View>
 
@@ -561,13 +561,13 @@ function CargasRepartidor({ navigation }) {
             </Text>
 
             <Text style={styles.vacioTitulo}>
-              No tienes cargas pendientes
+              No tienes rutas pendientes de iniciar
             </Text>
 
             <Text style={styles.vacioTexto}>
               Cuando el encargado registre una
-              carga para ti, aparecerá aquí para
-              que puedas confirmarla.
+              ruta para ti, aparecerá aquí para
+              que puedas iniciarla.
             </Text>
 
             <TouchableOpacity
@@ -723,7 +723,7 @@ function CargasRepartidor({ navigation }) {
                   </Text>
 
                   <Text style={styles.avisoTexto}>
-                    Confirma la carga únicamente
+                    Confirma la ruta únicamente
                     después de verificar físicamente
                     la cantidad recibida.
                   </Text>
@@ -756,14 +756,14 @@ function CargasRepartidor({ navigation }) {
                       />
 
                       <Text style={styles.aceptarTexto}>
-                        Confirmando...
+                        Iniciando...
                       </Text>
                     </>
 
                   ) : (
 
                     <Text style={styles.aceptarTexto}>
-                      ✅ Aceptar carga
+                      ✅ Iniciar ruta
                     </Text>
 
                   )}
@@ -810,7 +810,7 @@ const styles = StyleSheet.create({
 
   contenedor: {
     flex: 1,
-    backgroundColor: "#f5f1ea",
+    backgroundColor: "#0e1115",
   },
 
   // ================================================
@@ -823,14 +823,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 15,
-    backgroundColor: "#7a4e39",
+    backgroundColor: "#101319",
+    borderBottomWidth: 1,
+    borderBottomColor: "#2D3B4E",
   },
 
   iconoHeaderContainer: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "rgba(255,153,0,0.15)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -851,7 +853,7 @@ const styles = StyleSheet.create({
   },
 
   subtitulo: {
-    color: "#f5f1ea",
+    color: "#8D9DB6",
     fontSize: 13,
     marginTop: 2,
   },
@@ -861,11 +863,13 @@ const styles = StyleSheet.create({
   // ================================================
 
   perfilCard: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#171c24",
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 18,
     padding: 16,
+    borderWidth: 1,
+    borderColor: "#2D3B4E",
     elevation: 3,
     shadowColor: "#000",
     shadowOpacity: 0.08,
@@ -885,7 +889,7 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: "#7a4e39",
+    backgroundColor: "#005E9E",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -904,13 +908,13 @@ const styles = StyleSheet.create({
   perfilNombre: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#363f37",
+    color: "#ffffff",
   },
 
   perfilRol: {
     marginTop: 2,
     fontSize: 12,
-    color: "#7a4e39",
+    color: "#FF9900",
     fontWeight: "700",
     textTransform: "uppercase",
   },
@@ -918,11 +922,11 @@ const styles = StyleSheet.create({
   perfilEmail: {
     marginTop: 4,
     fontSize: 12,
-    color: "#666666",
+    color: "#8D9DB6",
   },
 
   logoutButton: {
-    backgroundColor: "#f5f1ea",
+    backgroundColor: "#1A2332",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -930,7 +934,7 @@ const styles = StyleSheet.create({
   },
 
   logoutButtonText: {
-    color: "#7a4e39",
+    color: "#FF9900",
     fontWeight: "700",
     fontSize: 11,
   },
@@ -944,7 +948,7 @@ const styles = StyleSheet.create({
 
   resumenMiniCard: {
     flex: 1,
-    backgroundColor: "#f8f4ec",
+    backgroundColor: "#1A2332",
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: "center",
@@ -954,33 +958,33 @@ const styles = StyleSheet.create({
   resumenMiniNumero: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#7a4e39",
+    color: "#FF9900",
   },
 
   resumenMiniLabel: {
     marginTop: 3,
     fontSize: 11,
-    color: "#666666",
+    color: "#8D9DB6",
     fontWeight: "600",
   },
 
   bienvenida: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#101319",
     paddingHorizontal: 20,
     paddingVertical: 18,
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e0d8",
+    borderBottomColor: "#2D3B4E",
   },
 
   bienvenidaTitulo: {
     fontSize: 19,
     fontWeight: "700",
-    color: "#363f37",
+    color: "#ffffff",
   },
 
   bienvenidaTexto: {
     marginTop: 5,
-    color: "#666666",
+    color: "#8D9DB6",
     fontSize: 14,
     lineHeight: 20,
   },
@@ -999,13 +1003,15 @@ const styles = StyleSheet.create({
   // ================================================
 
   resumenCard: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#171c24",
     borderRadius: 12,
     padding: 18,
     marginBottom: 15,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#2D3B4E",
     elevation: 2,
     shadowColor: "#000",
     shadowOpacity: 0.08,
@@ -1019,26 +1025,26 @@ const styles = StyleSheet.create({
   resumenTitulo: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#363f37",
+    color: "#ffffff",
   },
 
   resumenSubtitulo: {
     marginTop: 3,
     fontSize: 12,
-    color: "#777777",
+    color: "#8D9DB6",
   },
 
   contador: {
     width: 45,
     height: 45,
     borderRadius: 23,
-    backgroundColor: "#7a4e39",
+    backgroundColor: "#FF9900",
     alignItems: "center",
     justifyContent: "center",
   },
 
   contadorTexto: {
-    color: "#ffffff",
+    color: "#101319",
     fontSize: 19,
     fontWeight: "700",
   },
@@ -1048,10 +1054,12 @@ const styles = StyleSheet.create({
   // ================================================
 
   cargaCard: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#171c24",
     borderRadius: 14,
     padding: 18,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#2D3B4E",
     elevation: 3,
     shadowColor: "#000",
     shadowOpacity: 0.09,
@@ -1071,44 +1079,44 @@ const styles = StyleSheet.create({
   cargaTitulo: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#363f37",
+    color: "#ffffff",
   },
 
   cargaFecha: {
     marginTop: 4,
     fontSize: 12,
-    color: "#777777",
+    color: "#8D9DB6",
   },
 
   estadoPendiente: {
-    backgroundColor: "#fff3cd",
+    backgroundColor: "rgba(255,153,0,0.15)",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
   },
 
   estadoPendienteTexto: {
-    color: "#856404",
+    color: "#FF9900",
     fontSize: 10,
     fontWeight: "700",
   },
 
   estadoTransito: {
-    backgroundColor: "#e8f5e9",
+    backgroundColor: "rgba(34,197,94,0.15)",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
   },
 
   estadoTransitoTexto: {
-    color: "#2e7d32",
+    color: "#4ADE80",
     fontSize: 10,
     fontWeight: "700",
   },
 
   separador: {
     height: 1,
-    backgroundColor: "#eeeeee",
+    backgroundColor: "#2D3B4E",
     marginVertical: 15,
   },
 
@@ -1129,7 +1137,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#f5f1ea",
+    backgroundColor: "#1A2332",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1141,19 +1149,19 @@ const styles = StyleSheet.create({
 
   datoEtiqueta: {
     fontSize: 11,
-    color: "#888888",
+    color: "#8D9DB6",
     marginBottom: 2,
   },
 
   datoValor: {
     fontSize: 15,
-    color: "#363f37",
+    color: "#D4E5F5",
     fontWeight: "600",
   },
 
   cantidadValor: {
     fontSize: 18,
-    color: "#7a4e39",
+    color: "#FF9900",
     fontWeight: "700",
   },
 
@@ -1164,7 +1172,7 @@ const styles = StyleSheet.create({
   avisoCard: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: "#f8f4ec",
+    backgroundColor: "#1A2332",
     borderRadius: 9,
     padding: 12,
     marginTop: 18,
@@ -1179,7 +1187,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 8,
     fontSize: 12,
-    color: "#666666",
+    color: "#8D9DB6",
     lineHeight: 18,
   },
 
@@ -1188,7 +1196,7 @@ const styles = StyleSheet.create({
   // ================================================
 
   aceptarBoton: {
-    backgroundColor: "#536d5f",
+    backgroundColor: "#FF9900",
     borderRadius: 9,
     paddingVertical: 14,
     alignItems: "center",
@@ -1197,7 +1205,7 @@ const styles = StyleSheet.create({
   },
 
   aceptarTexto: {
-    color: "#ffffff",
+    color: "#101319",
     fontSize: 15,
     fontWeight: "700",
     marginLeft: 6,
@@ -1212,11 +1220,13 @@ const styles = StyleSheet.create({
   // ================================================
 
   vacioCard: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#171c24",
     borderRadius: 14,
     padding: 30,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#2D3B4E",
     elevation: 2,
     shadowColor: "#000",
     shadowOpacity: 0.07,
@@ -1235,28 +1245,28 @@ const styles = StyleSheet.create({
   vacioTitulo: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#363f37",
+    color: "#ffffff",
     textAlign: "center",
   },
 
   vacioTexto: {
     marginTop: 8,
     fontSize: 13,
-    color: "#777777",
+    color: "#8D9DB6",
     lineHeight: 19,
     textAlign: "center",
   },
 
   actualizarBoton: {
     marginTop: 18,
-    backgroundColor: "#7a4e39",
+    backgroundColor: "#FF9900",
     borderRadius: 8,
     paddingHorizontal: 20,
     paddingVertical: 11,
   },
 
   actualizarTexto: {
-    color: "#ffffff",
+    color: "#101319",
     fontWeight: "700",
   },
 
@@ -1268,9 +1278,9 @@ const styles = StyleSheet.create({
     margin: 16,
     padding: 16,
     borderRadius: 10,
-    backgroundColor: "#f8d7da",
+    backgroundColor: "rgba(239,68,68,0.12)",
     borderWidth: 1,
-    borderColor: "#f5c6cb",
+    borderColor: "rgba(239,68,68,0.4)",
     flexDirection: "row",
   },
 
@@ -1284,13 +1294,13 @@ const styles = StyleSheet.create({
   },
 
   errorTitulo: {
-    color: "#721c24",
+    color: "#FCA5A5",
     fontSize: 15,
     fontWeight: "700",
   },
 
   errorTexto: {
-    color: "#721c24",
+    color: "#FCA5A5",
     fontSize: 13,
     marginTop: 4,
     lineHeight: 18,
@@ -1299,7 +1309,7 @@ const styles = StyleSheet.create({
   reintentarBoton: {
     alignSelf: "flex-start",
     marginTop: 10,
-    backgroundColor: "#721c24",
+    backgroundColor: "#EF4444",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 7,
@@ -1319,12 +1329,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#f5f1ea",
+    backgroundColor: "#0e1115",
   },
 
   cargandoTexto: {
     marginTop: 12,
-    color: "#666666",
+    color: "#8D9DB6",
     fontSize: 14,
   },
 
@@ -1336,18 +1346,20 @@ const styles = StyleSheet.create({
     marginTop: 5,
     padding: 16,
     borderRadius: 10,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#171c24",
+    borderWidth: 1,
+    borderColor: "#2D3B4E",
   },
 
   pieInfoTitulo: {
-    color: "#363f37",
+    color: "#ffffff",
     fontWeight: "700",
     fontSize: 14,
   },
 
   pieInfoTexto: {
     marginTop: 5,
-    color: "#777777",
+    color: "#8D9DB6",
     fontSize: 12,
     lineHeight: 18,
   },
