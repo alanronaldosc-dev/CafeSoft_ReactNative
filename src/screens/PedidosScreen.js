@@ -1,3 +1,6 @@
+// HU-013: Lista interactiva de pedidos
+// Objetivo: Mostrar pedidos agrupados por estado (Pendiente, En Ruta, Entregado, Cancelado)
+// y permitir asignarlos a repartidores en tiempo real.
 import React, {
   useState,
   useCallback,
@@ -47,83 +50,106 @@ export default function PedidosScreen() {
   ] = useState(null);
 
 
+// =========================================
+  // CARGAR PEDIDOS (todos con estadoo¡
+ // =========================================
+  
+
+const cargarPedidos = async (mostrarCarga = true) => {
+    try {
+      if (mostrarCarga) setLoading(true);
+      const response = await fetch(`${BASE_URL}/ventas/pedidos`);
+      if (!response.ok) throw new Error('No se pudieron cargar los pedidos');
+      const data = await response.json();
+      setPedidos(Array.isArray(data) ? data : []);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
+      if (mostrarCarga) setLoading(false);
+      setRefreshing(false);
+    }
+  };
+  useFocusEffect(
+    useCallback(() => {
+      cargarPedidos();
+      const intervalo = setInterval(() => cargarPedidos(false), 5000);
+      return () => clearInterval(intervalo);
+    }, [])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    cargarPedidos(false);
+  };
+
+   // =========================================
+  // ASIGNAR REPARTIDOR
   // =========================================
-  // CARGAR PEDIDOS
-  // =========================================
+  const asignarRepartidor = async (pedido) => {
+    try {
+      const response = await fetch(
+        `${BASE_URL}/ventas/${pedido.id}/asignar?repartidor=123`,
+        { method: 'PUT' }
+      );
+      if (!response.ok) throw new Error('No se pudo asignar el repartidor');
+      Alert.alert('Asignado', `Pedido ${pedido.folio} asignado al repartidor`);
+      cargarPedidos(false);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
+  };
 
-  const cargarPedidos =
-    async (mostrarCarga = true) => {
+  const estados = ["Pendiente", "En Ruta", "Entregado", "Cancelado"];
 
-      try {
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={colors.secondary} />
+        <Text>Cargando pedidos...</Text>
+      </View>
+    );
+  }
 
-        if (mostrarCarga) {
-          setLoading(true);
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#3D1A00', '#6B3A1F']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <Text style={styles.headerTitle}>Pedidos</Text>
+      </LinearGradient>
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-
-
-        const response =
-          await fetch(
-            `${BASE_URL}/ventas/pedidos/pendientes`
-          );
-
-
-        if (!response.ok) {
-
-          const errorTexto =
-            await response.text();
-
-          throw new Error(
-            errorTexto ||
-            'No se pudieron cargar los pedidos'
-          );
-
-        }
-
-
-        const data =
-          await response.json();
-
-
-        console.log(
-          'PEDIDOS PENDIENTES:',
-          data
-        );
-
-
-        setPedidos(
-          Array.isArray(data)
-            ? data
-            : []
-        );
-
-
-      } catch (error) {
-
-        console.error(
-          'ERROR PEDIDOS:',
-          error
-        );
-
-
-        Alert.alert(
-          'Error',
-          error.message ||
-          'No se pudieron cargar los pedidos'
-        );
-
-
-      } finally {
-
-        if (mostrarCarga) {
-          setLoading(false);
-        }
-
-        setRefreshing(false);
-
-      }
-
-    };
-
+      >
+        {estados.map((estado) => (
+          <View key={estado} style={{ marginBottom: 20 }}>
+            <Text style={{ fontWeight: 'bold', fontSize: 18 }}>{estado}</Text>
+            {pedidos.filter((p) => p.estado === estado).map((pedido) => (
+              <View key={pedido.id} style={styles.pedidoCard}>
+                <Text style={styles.clienteNombre}>
+                  {pedido.nombreCliente || 'Sin nombre'}
+                </Text>
+                <Text>{pedido.direccion}</Text>
+                <TouchableOpacity
+                  style={styles.entregarButton}
+                  onPress={() => asignarRepartidor(pedido)}
+                >
+                  <Text style={styles.entregarButtonText}>Asignar repartidor</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
 
   // =========================================
   // CUANDO ENTRA A LA PANTALLA
