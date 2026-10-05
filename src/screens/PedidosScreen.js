@@ -1,3 +1,7 @@
+// HU-014: Botón Navegar en pedido
+// Objetivo: Permitir al repartidor abrir la dirección en Google Maps/Waze
+// desde la tarjeta del pedido, evitando copiar manualmente la dirección.
+
 import React, {
   useState,
   useCallback,
@@ -17,6 +21,9 @@ import {
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+
+import { Linking } from 'react-native';
+
 
 import colors from '../theme/colors';
 
@@ -169,6 +176,19 @@ export default function PedidosScreen() {
 
   };
 
+
+    // =========================================
+  // Abrir mapa
+  // =========================================
+
+  const abrirMapa = (direccion) => {
+  if (!direccion) {
+    Alert.alert("Error", "No hay dirección registrada");
+    return;
+  }
+  const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`;
+  Linking.openURL(url);
+};
 
   // =========================================
   // MARCAR ENTREGADO
@@ -876,6 +896,15 @@ export default function PedidosScreen() {
                       </Text>
 
                     </View>
+
+{/* NAVEGAR */}
+<TouchableOpacity
+  style={[styles.entregarButton, { backgroundColor: colors.primary, marginBottom: 10 }]}
+  onPress={() => abrirMapa(pedido.direccion)}
+>
+  <Text style={styles.entregarButtonText}>📍 Navegar</Text>
+</TouchableOpacity>
+
 
 
                     {/* ENTREGAR */}
