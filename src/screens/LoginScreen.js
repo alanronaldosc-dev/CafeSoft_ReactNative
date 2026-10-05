@@ -6,24 +6,45 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
+
+  StyleSheet, ScrollView, Dimensions,
+  Alert, ActivityIndicator,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import api from '../config/api';
+import { useAuth } from '../context/AuthContext';
+=======
   StyleSheet, ScrollView, Dimensions, Alert, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { BASE_URL } from '../config/api';
+
 import colors from '../theme/colors';
 
 const { width, height } = Dimensions.get('window');
 const ROLES = ['Cliente', 'Administrador', 'Empleado', 'Repartidor'];
 
 const LOGIN_ENDPOINTS = [
+
+  '/auth/login',
+  '/usuarios/login',
+=======
   '/usuarios/login',
   '/auth/login',
+
   '/login',
 ];
 
 const normalizeRole = (value = '') =>
+
+  String(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+=======
   String(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
 
 export default function LoginScreen({ navigation }) {
   const { iniciarSesion } = useAuth();
@@ -73,6 +94,9 @@ export default function LoginScreen({ navigation }) {
       { correo: email.trim(), contrasena: password.trim() },
       { username: email.trim(), password: password.trim() },
     ];
+
+
+======
     return base.filter((payload, index, array) =>
       JSON.stringify(payload) !== '{}' &&
       array.findIndex((item) => JSON.stringify(item) === JSON.stringify(payload)) === index
@@ -87,6 +111,21 @@ export default function LoginScreen({ navigation }) {
       Alert.alert('Faltan datos', 'Ingresa correo y contraseña para continuar.');
       return;
     }
+
+
+    setLoading(true);
+
+    let lastError = null;
+
+    try {
+      const payloads = buildPayloads();
+
+      for (const endpoint of LOGIN_ENDPOINTS) {
+        for (const payload of payloads) {
+          try {
+            const response = await api.post(endpoint, payload);
+            const usuario = getUserFromResponse(response.data, trimmedEmail);
+=======
 
     setLoading(true);
     let lastError = null;
@@ -111,6 +150,7 @@ export default function LoginScreen({ navigation }) {
             const responseData = await response.json();
             const usuario = getUserFromResponse(responseData, trimmedEmail);
 
+
             if (!usuario || (!usuario.id && !usuario.email && !usuario.nombre)) {
               continue;
             }
@@ -130,6 +170,10 @@ export default function LoginScreen({ navigation }) {
               index: 0,
               routes: [{ name: destino }],
             });
+
+
+=======
+
             return;
           } catch (error) {
             lastError = error;
@@ -141,8 +185,11 @@ export default function LoginScreen({ navigation }) {
         lastError?.response?.data?.message ||
         lastError?.response?.data?.mensaje ||
         lastError?.response?.data?.error ||
+
+=======
         lastError?.error ||
         lastError?.message ||
+
         'Credenciales incorrectas o el servidor no respondió correctamente.';
 
       Alert.alert('Error de inicio de sesión', mensaje);
@@ -252,6 +299,10 @@ export default function LoginScreen({ navigation }) {
           <TouchableOpacity style={styles.forgotPassword}>
             <Text style={styles.forgotPasswordText}>¿Olvidé mi contraseña?</Text>
           </TouchableOpacity>
+
+
+          {/* Botón con gradiente */}
+=======
 
           <TouchableOpacity
             onPress={handleLogin}
