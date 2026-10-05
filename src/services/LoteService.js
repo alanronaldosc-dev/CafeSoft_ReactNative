@@ -2,7 +2,7 @@
 // Capa de comunicación con /api/lotes
 // Los lotes son los "registros de entrada" de insumos al inventario
 
-const BASE_URL = 'http://192.168.100.5:8080/api';
+import { BASE_URL } from '../config/api';
 
 const headers = {
   'Content-Type': 'application/json',

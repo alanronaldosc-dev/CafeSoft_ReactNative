@@ -81,7 +81,7 @@ export default function ProfileScreen({ navigation }) {
         </View>
       </LinearGradient>
 
-      {/* Estadísticas del usuario */}
+      {/* HU-011: estadísticas operativas del perfil consultado */}
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>{USER.orders}</Text>
