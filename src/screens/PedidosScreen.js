@@ -1,11 +1,20 @@
+
 // HU-013: Lista interactiva de pedidos
 // Objetivo: Mostrar pedidos agrupados por estado (Pendiente, En Ruta, Entregado, Cancelado)
 // y permitir asignarlos a repartidores en tiempo real.
+=======
+// HU-014: Botón Navegar en pedido
+// Objetivo: Permitir al repartidor abrir la dirección en Google Maps/Waze
+// desde la tarjeta del pedido, evitando copiar manualmente la dirección.
+
+
 import React, {
   useState,
   useCallback,
   useEffect,
 } from 'react';
+import { BASE_URL } from '../config/api';
+import { useAuth } from '../context/AuthContext';
 
 import {
   View,
@@ -21,14 +30,18 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 
+import { Linking } from 'react-native';
+
+
 import colors from '../theme/colors';
 
 
-import { BASE_URL } from '../config/api';
+
 
 
 export default function PedidosScreen() {
-
+  const { getToken } = useAuth();
+  
   const [
     pedidos,
     setPedidos,
@@ -48,6 +61,7 @@ export default function PedidosScreen() {
     entregandoId,
     setEntregandoId,
   ] = useState(null);
+
 
 
 // =========================================
@@ -76,11 +90,73 @@ const cargarPedidos = async (mostrarCarga = true) => {
       return () => clearInterval(intervalo);
     }, [])
   );
+=======
+  // =========================================
+  // CARGAR PEDIDOS
+  // =========================================
+
+  const cargarPedidos =
+    async (mostrarCarga = true) => {
+
+      try {
+
+        if (mostrarCarga) {
+          setLoading(true);
+        }
+
+
+    const token = await getToken();
+
+    const response = await fetch(
+      `${BASE_URL}/ventas/pedidos/pendientes`,
+      {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+
+
+        if (!response.ok) {
+
+          const errorTexto =
+            await response.text();
+
+          throw new Error(
+            errorTexto ||
+            'No se pudieron cargar los pedidos'
+          );
+
+        }
+
+
+        const data =
+          await response.json();
+
+
+        console.log(
+          'PEDIDOS PENDIENTES:',
+          data
+        );
+
+
+        setPedidos(
+          Array.isArray(data)
+            ? data
+            : []
+        );
+
+
+      } catch (error) {
+
 
   const onRefresh = () => {
     setRefreshing(true);
     cargarPedidos(false);
   };
+
 
    // =========================================
   // ASIGNAR REPARTIDOR
@@ -98,6 +174,14 @@ const cargarPedidos = async (mostrarCarga = true) => {
       Alert.alert('Error', error.message);
     }
   };
+=======
+          console.error('Status:', error.message);  // ya existe
+  // Agrega esto:
+  if (error.response) {
+    console.error('Respuesta:', error.response.status, error.response.data);
+  }
+
+
 
   const estados = ["Pendiente", "En Ruta", "Entregado", "Cancelado"];
 
@@ -196,6 +280,19 @@ const cargarPedidos = async (mostrarCarga = true) => {
   };
 
 
+    // =========================================
+  // Abrir mapa
+  // =========================================
+
+  const abrirMapa = (direccion) => {
+  if (!direccion) {
+    Alert.alert("Error", "No hay dirección registrada");
+    return;
+  }
+  const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`;
+  Linking.openURL(url);
+};
+
   // =========================================
   // MARCAR ENTREGADO
   // =========================================
@@ -226,19 +323,19 @@ const cargarPedidos = async (mostrarCarga = true) => {
                   );
 
 
-                  const response =
-                    await fetch(
-                      `${BASE_URL}/ventas/${pedido.id}/entregar`,
-                      {
-                        method:
-                          'PUT',
+                  const token = await getToken();
 
-                        headers: {
-                          Accept:
-                            'application/json',
-                        },
-                      }
-                    );
+                  const response = await fetch(
+                    `${BASE_URL}/ventas/${pedido.id}/entregar`,
+                    {
+                      method: 'PUT',
+                      headers: {
+                        Accept: 'application/json',
+                        Authorization: token ? `Bearer ${token}` : '',
+                      },
+                    }
+                  );
+
 
 
                   if (
@@ -354,8 +451,8 @@ const cargarPedidos = async (mostrarCarga = true) => {
         <LinearGradient
 
           colors={[
-            '#3D1A00',
-            '#6B3A1F',
+            '#0F1B2D',
+            '#0073BB',
           ]}
 
           style={
@@ -435,8 +532,8 @@ const cargarPedidos = async (mostrarCarga = true) => {
       <LinearGradient
 
         colors={[
-          '#3D1A00',
-          '#6B3A1F',
+          '#0F1B2D',
+          '#0073BB',
         ]}
 
         style={
@@ -903,6 +1000,15 @@ const cargarPedidos = async (mostrarCarga = true) => {
 
                     </View>
 
+{/* NAVEGAR */}
+<TouchableOpacity
+  style={[styles.entregarButton, { backgroundColor: colors.primary, marginBottom: 10 }]}
+  onPress={() => abrirMapa(pedido.direccion)}
+>
+  <Text style={styles.entregarButtonText}>📍 Navegar</Text>
+</TouchableOpacity>
+
+
 
                     {/* ENTREGAR */}
 
@@ -1163,7 +1269,12 @@ const styles =
     pedidoCard: {
 
       backgroundColor:
-        colors.white,
+        colors.surface,
+
+      borderWidth: 1,
+
+      borderColor:
+        colors.border,
 
       borderRadius: 20,
 
@@ -1232,7 +1343,7 @@ const styles =
     estadoBadge: {
 
       backgroundColor:
-        '#FFF4E5',
+        '#1A1500',
 
       paddingHorizontal: 10,
 
@@ -1245,7 +1356,7 @@ const styles =
 
     estadoText: {
 
-      color: '#B26A00',
+      color: '#FF9900',
 
       fontSize: 11,
 
@@ -1365,7 +1476,7 @@ const styles =
     resumen: {
 
       backgroundColor:
-        colors.background,
+        colors.surfaceAlt,
 
       borderRadius: 14,
 
@@ -1414,7 +1525,7 @@ const styles =
       borderTopWidth: 1,
 
       borderTopColor:
-        colors.surface,
+        colors.border,
 
       paddingTop: 8,
 
@@ -1473,7 +1584,7 @@ const styles =
     entregarButton: {
 
       backgroundColor:
-        colors.success,
+        '#1D8348',
 
       borderRadius: 14,
 

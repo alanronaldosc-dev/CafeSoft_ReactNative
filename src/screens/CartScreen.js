@@ -118,7 +118,8 @@ export default function CartScreen() {
   if (view === 'ticket' && ticket) {
     return (
       <View style={styles.container}>
-        <LinearGradient colors={['#3D1A00', '#6B3A1F']} style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+        <LinearGradient colors={['#0F1B2D', '#0073BB']}
+ style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
           <View style={[styles.headerCircle, styles.headerCircle1]} />
           <Text style={styles.headerTitle}>Ticket de Venta</Text>
           <View style={{ width: 24 }} />
@@ -175,7 +176,7 @@ export default function CartScreen() {
             <Text style={styles.ticketGracias}>¡Gracias por tu compra!</Text>
           </View>
           <TouchableOpacity onPress={handleNuevaVenta} style={styles.buttonWrapper}>
-            <LinearGradient colors={[colors.secondary, '#A0522D', colors.primary]} style={styles.nuevaVentaButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+            <LinearGradient colors={[colors.secondary, colors.primary]} style={styles.nuevaVentaButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
               <Text style={styles.nuevaVentaButtonText}>Nueva Venta</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -188,7 +189,8 @@ export default function CartScreen() {
   if (view === 'cart') {
     return (
       <View style={styles.container}>
-        <LinearGradient colors={['#3D1A00', '#6B3A1F']} style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+        <LinearGradient colors={['#0F1B2D', '#0073BB']}
+ style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
           <View style={[styles.headerCircle, styles.headerCircle1]} />
           <TouchableOpacity onPress={() => setView('catalog')}>
             <Text style={styles.backButton}>←</Text>
@@ -298,7 +300,7 @@ export default function CartScreen() {
                 disabled={loadingVenta}
                 style={[styles.buttonWrapper, loadingVenta && { opacity: 0.6 }]}
               >
-                <LinearGradient colors={[colors.secondary, '#A0522D', colors.primary]} style={styles.checkoutButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                <LinearGradient colors={[colors.secondary, colors.primary]} style={styles.checkoutButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                   {loadingVenta ? (
                     <ActivityIndicator color={colors.white} />
                   ) : (
@@ -316,7 +318,8 @@ export default function CartScreen() {
   // ─── VISTA: CATÁLOGO ──────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#3D1A00', '#6B3A1F']} style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+      <LinearGradient colors={['#0F1B2D', '#0073BB']}
+ style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
         <View style={[styles.headerCircle, styles.headerCircle1]} />
         <Text style={styles.headerTitle}>Catálogo</Text>
         <TouchableOpacity style={styles.cartIconContainer} onPress={() => setView('cart')}>
@@ -479,14 +482,16 @@ const styles = StyleSheet.create({
   productList: { padding: 16, paddingBottom: 20 },
   row: { justifyContent: 'space-between', marginBottom: 16 },
   productCard: {
-    width: '48%', backgroundColor: colors.white, borderRadius: 18, overflow: 'hidden',
+    width: '48%',   backgroundColor: colors.surface,
+  borderWidth: 1,
+  borderColor: colors.border, borderRadius: 18, overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08, shadowRadius: 10, elevation: 3,
   },
   productImage: { width: '100%', height: 120 },
   productImagePlaceholder: {
     width: '100%', height: 120,
-    backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center',
   },
   productImagePlaceholderText: { fontSize: 40 },
   productInfo: { padding: 10 },
@@ -498,7 +503,9 @@ const styles = StyleSheet.create({
   // Carrito
   scroll: { padding: 20, paddingBottom: 40 },
   cartItem: {
-    backgroundColor: colors.white, borderRadius: 18, padding: 14,
+      backgroundColor: colors.surface,
+  borderWidth: 1,
+  borderColor: colors.border, borderRadius: 18, padding: 14,
     flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.07, shadowRadius: 10, elevation: 3,
@@ -506,7 +513,7 @@ const styles = StyleSheet.create({
   cartItemImage: { width: 64, height: 64, borderRadius: 12 },
   cartItemImagePlaceholder: {
     width: 64, height: 64, borderRadius: 12,
-    backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center',
   },
   cartItemInfo: { flex: 1 },
   cartItemName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
@@ -523,7 +530,8 @@ const styles = StyleSheet.create({
   deleteIcon: { fontSize: 20 },
   cartItemTotal: { fontSize: 15, fontWeight: 'bold', color: colors.textPrimary },
   summaryCard: {
-    backgroundColor: colors.white, borderRadius: 18, padding: 16, marginBottom: 16,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 18, padding: 16, marginBottom: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
   },
@@ -535,7 +543,8 @@ const styles = StyleSheet.create({
   totalLabel: { fontSize: 16, fontWeight: 'bold', color: colors.textPrimary },
   totalValue: { fontSize: 16, fontWeight: 'bold', color: colors.secondary },
   pagoCard: {
-    backgroundColor: colors.white, borderRadius: 18, padding: 16, marginBottom: 16,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 18, padding: 16, marginBottom: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
   },
@@ -572,7 +581,8 @@ const styles = StyleSheet.create({
   checkoutButtonText: { color: colors.white, fontSize: 16, fontWeight: 'bold' },
   // Ticket
   ticketCard: {
-    backgroundColor: colors.white, borderRadius: 20, padding: 20, marginBottom: 20,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 20, padding: 20, marginBottom: 20,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1, shadowRadius: 12, elevation: 5,
   },
