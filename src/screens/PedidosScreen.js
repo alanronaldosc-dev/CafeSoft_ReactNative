@@ -1,5 +1,5 @@
 
-// HU-013: Lista interactiva de pedidos
+// historia HU-013: Lista interactiva de pedidos
 // Objetivo: Mostrar pedidos agrupados por estado (Pendiente, En Ruta, Entregado, Cancelado)
 // y permitir asignarlos a repartidores en tiempo real.
 
