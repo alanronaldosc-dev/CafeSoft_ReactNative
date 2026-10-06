@@ -1,681 +1,2410 @@
-import React, { useCallback, useState } from 'react';
+// HU-015: Venta durante la ruta del repartidor
+
+import React, { useCallback, useState } from "react";
+
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Modal,
   RefreshControl,
-  Linking,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+} from "react-native";
 
-const abrirMapa = (direccion) => {
-  if (!direccion) {
-    Alert.alert(
-      'Sin dirección',
-      'Este pedido no tiene una dirección registrada.'
-    );
-    return;
-  }
+import { LinearGradient } from "expo-linear-gradient";
+import { useFocusEffect } from "@react-navigation/native";
 
-  const url =
-    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      direccion
-    )}`;
+import colors from "../theme/colors";
+import api from "../config/api";
+import { useAuth } from "../context/AuthContext";
 
-  Linking.openURL(url);
-};
+export default function PedidosScreen({ route }) {
+  const { usuario, getToken } = useAuth();
 
-import api from '../config/api';
-import { useAuth } from '../context/AuthContext';
-import colors from '../theme/colors';
-
-export default function PedidosScreen() {
-  const { usuario } = useAuth();
+  // ============================================
+  // REPARTIDOR
+  // ============================================
 
   const repartidorId =
-    usuario?.id ?? usuario?.idUsuario ?? usuario?.id_usuario;
+    route?.params?.repartidorId ??
+    usuario?.id ??
+    usuario?.idUsuario ??
+    usuario?.id_usuario;
 
-  const [pedidos, setPedidos] = useState([]);
-  const [resumenHoy, setResumenHoy] = useState(null);
-  const [cargando, setCargando] = useState(true);
-  const [refrescando, setRefrescando] = useState(false);
-  const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
+  // ============================================
+  // ESTADOS DE LA RUTA
+  // ============================================
+
+  const [clientes, setClientes] = useState([]);
+  const [atendidos, setAtendidos] = useState({});
+
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [sinRuta, setSinRuta] = useState(false);
+
+  // ============================================
+  // ESTADO DE LA CAMIONETA
+  // ============================================
+
+  const [
+    garrafonesCamioneta,
+    setGarrafonesCamioneta,
+  ] = useState(
+    Number(route?.params?.cantidadCarga ?? 0)
+  );
+
+  const [
+    envasesVaciosCamioneta,
+    setEnvasesVaciosCamioneta,
+  ] = useState(0);
+
+  const [monedero, setMonedero] = useState(0);
+
+  // ============================================
+  // MODAL DE VENTA
+  // ============================================
+
   const [modalVisible, setModalVisible] = useState(false);
-  const [guardando, setGuardando] = useState(false);
+  const [clienteActivo, setClienteActivo] = useState(null);
 
-  const [garrafones, setGarrafones] = useState('1');
-  const [envasesVacios, setEnvasesVacios] = useState('0');
-  const [metodoCobro, setMetodoCobro] = useState('EFECTIVO');
-  const [montoCobrado, setMontoCobrado] = useState('0');
-  const [observaciones, setObservaciones] = useState('');
+  const [
+    garrafonesEntregados,
+    setGarrafonesEntregados,
+  ] = useState("1");
 
-  const cargarResumenHoy = async () => {
-    if (!repartidorId) return;
+  const [
+    envasesVacios,
+    setEnvasesVacios,
+  ] = useState("0");
 
-    try {
-      const res = await api.get(
-        `/liquidaciones/repartidor/${repartidorId}/resumen`
-      );
-      setResumenHoy(res.data);
-    } catch (error) {
-      console.log('No se pudo cargar el resumen del día:', error?.message);
-    }
-  };
+  const [
+    precioUnitario,
+    setPrecioUnitario,
+  ] = useState("");
 
-  const cargarPedidos = async (mostrarCarga = true) => {
-    try {
-      if (mostrarCarga) setCargando(true);
+  const [
+    metodoCobro,
+    setMetodoCobro,
+  ] = useState("EFECTIVO");
 
-      const res = await api.get('/ventas/pedidos/pendientes');
-      setPedidos(Array.isArray(res.data) ? res.data : []);
-    } catch (error) {
-      console.error('Error cargando pedidos:', error);
+  const [
+    observaciones,
+    setObservaciones,
+  ] = useState("");
+
+  const [procesando, setProcesando] = useState(false);
+
+  // ============================================
+  // CARGAR CLIENTES DE LA RUTA ACTIVA
+  // ============================================
+
+  const cargarClientes = async (
+    mostrarCarga = true
+  ) => {
+    if (!repartidorId) {
+      setLoading(false);
+
       Alert.alert(
-        'Error',
-        error.response?.data?.error || 'No se pudieron cargar los pedidos.'
+        "Error",
+        "No se pudo identificar al repartidor."
       );
+
+      return [];
+    }
+
+    try {
+      if (mostrarCarga) {
+        setLoading(true);
+      }
+
+      setSinRuta(false);
+
+      const token = await getToken();
+
+      const response = await api.get(
+        `/rutas/repartidor/${repartidorId}/activa/clientes`,
+        {
+          headers: {
+            Authorization: token
+              ? `Bearer ${token}`
+              : "",
+          },
+        }
+      );
+
+      const data = response?.data;
+
+      const listaClientes = Array.isArray(data)
+        ? data
+        : [];
+
+      setClientes(listaClientes);
+
+      return listaClientes;
+    } catch (error) {
+      const status = error?.response?.status;
+
+      const mensaje =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.response?.data?.mensaje;
+
+      console.log(
+        "Error cargando ruta:",
+        status,
+        mensaje
+      );
+
+      if (status === 404) {
+        setSinRuta(true);
+        setClientes([]);
+      } else {
+        Alert.alert(
+          "Error",
+          mensaje || "No se pudo cargar la ruta."
+        );
+      }
+
+      return [];
     } finally {
-      setCargando(false);
-      setRefrescando(false);
+      if (mostrarCarga) {
+        setLoading(false);
+      }
     }
   };
+
+  // ============================================
+  // CARGAR GARRAFONES REALES DE LA CAMIONETA
+  // ============================================
+
+  const cargarCargaActiva = async () => {
+    if (!repartidorId) {
+      return;
+    }
+
+    try {
+      const token = await getToken();
+
+      const response = await api.get(
+        `/cargas/repartidor/${repartidorId}`,
+        {
+          headers: {
+            Authorization: token
+              ? `Bearer ${token}`
+              : "",
+          },
+        }
+      );
+
+      const respuesta = response?.data;
+
+      let listaCargas = [];
+
+      if (Array.isArray(respuesta)) {
+        listaCargas = respuesta;
+      } else if (Array.isArray(respuesta?.data)) {
+        listaCargas = respuesta.data;
+      } else if (Array.isArray(respuesta?.cargas)) {
+        listaCargas = respuesta.cargas;
+      }
+
+      const cargasActivas = listaCargas.filter(
+        (carga) => {
+          const estado = String(
+            carga?.estado || ""
+          )
+            .toUpperCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+
+          return estado === "CARGA EN TRANSITO";
+        }
+      );
+
+      const disponibleTotal = cargasActivas.reduce(
+        (total, carga) => {
+          const disponible = Number(
+            carga?.cantidadDisponible ??
+              carga?.cantidad ??
+              0
+          );
+
+          return (
+            total +
+            (Number.isFinite(disponible)
+              ? disponible
+              : 0)
+          );
+        },
+        0
+      );
+
+      console.log(
+        "Garrafones disponibles:",
+        disponibleTotal
+      );
+
+      setGarrafonesCamioneta(
+        disponibleTotal
+      );
+    } catch (error) {
+      console.log(
+        "Error cargando carga activa:",
+        error?.response?.status,
+        error?.response?.data
+      );
+    }
+  };
+
+  // ============================================
+  // CARGAR ENTREGAS REALIZADAS HOY
+  // ============================================
+
+  const cargarEntregasHoy = async (
+    listaClientes = clientes
+  ) => {
+    if (!repartidorId) {
+      return;
+    }
+
+    try {
+      const token = await getToken();
+
+      const response = await api.get(
+        `/ventas/repartidor/${repartidorId}/entregas-hoy`,
+        {
+          headers: {
+            Authorization: token
+              ? `Bearer ${token}`
+              : "",
+          },
+        }
+      );
+
+      const respuesta = response?.data;
+
+      const entregas = Array.isArray(respuesta)
+        ? respuesta
+        : [];
+
+      console.log(
+        "Entregas de hoy:",
+        entregas
+      );
+
+      // ========================================
+      // RECONSTRUIR CLIENTES ATENDIDOS
+      // ========================================
+
+      const atendidosHoy = {};
+
+      entregas.forEach((entrega) => {
+        if (
+          String(entrega?.resultado || "")
+            .toUpperCase() !== "ENTREGADO"
+        ) {
+          return;
+        }
+
+        let clienteId = entrega?.clienteId;
+
+        /*
+         * Compatibilidad con las ventas realizadas
+         * antes de agregar clienteRutaId.
+         *
+         * Si no existe clienteId, intentamos localizar
+         * al cliente por nombre.
+         */
+        if (
+          !clienteId &&
+          entrega?.clienteNombre
+        ) {
+          const clienteEncontrado =
+            listaClientes.find(
+              (cliente) =>
+                String(cliente?.nombre || "")
+                  .trim()
+                  .toLowerCase() ===
+                String(
+                  entrega.clienteNombre
+                )
+                  .trim()
+                  .toLowerCase()
+            );
+
+          clienteId =
+            clienteEncontrado?.id;
+        }
+
+        if (!clienteId) {
+          return;
+        }
+
+        const cantidad = Number(
+          entrega?.garrafonesEntregados ?? 0
+        );
+
+        const vacios = Number(
+          entrega?.envasesVaciosRecibidos ?? 0
+        );
+
+        const total = Number(
+          entrega?.montoCobrado ?? 0
+        );
+
+        const precio =
+          cantidad > 0
+            ? total / cantidad
+            : 0;
+
+        atendidosHoy[clienteId] = {
+          cantidad,
+          vacios,
+          total,
+          precio,
+          metodoCobro:
+            entrega?.metodoCobro || "",
+        };
+      });
+
+      setAtendidos(atendidosHoy);
+
+      // ========================================
+      // RECONSTRUIR ENVASES VACÍOS
+      // ========================================
+
+      const totalVacios = entregas.reduce(
+        (total, entrega) => {
+          if (
+            String(entrega?.resultado || "")
+              .toUpperCase() !== "ENTREGADO"
+          ) {
+            return total;
+          }
+
+          return (
+            total +
+            Number(
+              entrega?.envasesVaciosRecibidos ??
+                0
+            )
+          );
+        },
+        0
+      );
+
+      setEnvasesVaciosCamioneta(
+        totalVacios
+      );
+
+      // ========================================
+      // RECONSTRUIR MONEDERO
+      // SOLO EFECTIVO
+      // ========================================
+
+      const totalEfectivo = entregas.reduce(
+        (total, entrega) => {
+          if (
+            String(entrega?.resultado || "")
+              .toUpperCase() !== "ENTREGADO"
+          ) {
+            return total;
+          }
+
+          if (
+            String(entrega?.metodoCobro || "")
+              .toUpperCase() !== "EFECTIVO"
+          ) {
+            return total;
+          }
+
+          return (
+            total +
+            Number(
+              entrega?.montoCobrado ?? 0
+            )
+          );
+        },
+        0
+      );
+
+      setMonedero(totalEfectivo);
+    } catch (error) {
+      console.log(
+        "Error cargando entregas de hoy:",
+        error?.response?.status,
+        error?.response?.data
+      );
+    }
+  };
+
+  // ============================================
+  // CARGAR TODO AL ENTRAR A MI RUTA
+  // ============================================
 
   useFocusEffect(
     useCallback(() => {
-      cargarPedidos();
-      cargarResumenHoy();
-    }, [])
+      const cargarTodo = async () => {
+        const listaClientes =
+          await cargarClientes();
+
+        await cargarCargaActiva();
+
+        await cargarEntregasHoy(
+          listaClientes || []
+        );
+      };
+
+      cargarTodo();
+
+      return () => {};
+    }, [repartidorId])
   );
 
-  const abrirConfirmacion = (pedido) => {
-    setPedidoSeleccionado(pedido);
-    setGarrafones('1');
-    setEnvasesVacios('0');
-    setMetodoCobro('EFECTIVO');
-    setMontoCobrado(String(Number(pedido.total || 0).toFixed(2)));
-    setObservaciones('');
-    setModalVisible(true);
-  };
+  // ============================================
+  // ACTUALIZAR DESLIZANDO
+  // ============================================
 
-  const confirmarEntrega = async () => {
-    if (!repartidorId) {
-      Alert.alert('Error', 'No se pudo identificar al repartidor.');
-      return;
-    }
-
-    const cantidad = Number(garrafones);
-    const vacios = Number(envasesVacios);
-    const cobrado = Number(montoCobrado);
-
-    if (!cantidad || cantidad <= 0) {
-      Alert.alert('Dato inválido', 'Ingresa los garrafones entregados.');
-      return;
-    }
-
-    if (vacios < 0 || cobrado < 0) {
-      Alert.alert('Dato inválido', 'Los valores no pueden ser negativos.');
-      return;
-    }
+  const onRefresh = async () => {
+    setRefreshing(true);
 
     try {
-      setGuardando(true);
+      const listaClientes =
+        await cargarClientes(false);
 
-      // Validar primero que el repartidor tenga una carga aceptada
-      // y suficientes garrafones disponibles. Esto evita un 400 poco claro.
-      const cargasRes = await api.get(`/cargas/repartidor/${repartidorId}`);
-      const cargasData = cargasRes?.data;
-      const listaCargas = Array.isArray(cargasData)
-        ? cargasData
-        : Array.isArray(cargasData?.data)
-          ? cargasData.data
-          : Array.isArray(cargasData?.cargas)
-            ? cargasData.cargas
-            : [];
+      await cargarCargaActiva();
 
-      const cargasActivas = listaCargas.filter((carga) => {
-        const estado = String(carga?.estado || '')
-          .toUpperCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '');
+      await cargarEntregasHoy(
+        listaClientes || []
+      );
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
-        return estado === 'CARGA EN TRANSITO';
-      });
+  // ============================================
+  // ABRIR GOOGLE MAPS
+  // ============================================
 
-      const disponibleTotal = cargasActivas.reduce((total, carga) => {
-        const disponible = Number(
-          carga?.cantidadDisponible ?? carga?.cantidad ?? 0
+  const abrirMapa = async (cliente) => {
+    try {
+      if (cliente?.linkGoogleMaps) {
+        await Linking.openURL(
+          cliente.linkGoogleMaps
         );
-        return total + (Number.isFinite(disponible) ? disponible : 0);
-      }, 0);
 
-      if (disponibleTotal + 0.0001 < cantidad) {
-        Alert.alert(
-          'Carga insuficiente',
-          disponibleTotal > 0
-            ? `Tienes ${disponibleTotal} garrafón(es) disponibles y quieres entregar ${cantidad}.`
-            : 'No tienes una carga activa. Ve a Cargas, acepta una carga y vuelve a intentar.'
-        );
         return;
       }
 
-      const payload = {
-        repartidorId: Number(repartidorId),
-        garrafonesEntregados: cantidad,
-        envasesVaciosRecibidos: vacios,
-        metodoCobro,
-        montoCobrado: cobrado,
-        observaciones: observaciones.trim(),
-      };
+      if (cliente?.domicilio) {
+        const url =
+          "https://www.google.com/maps/search/?api=1&query=" +
+          encodeURIComponent(
+            cliente.domicilio
+          );
 
-      console.log('Confirmando entrega:', {
-        pedidoId: pedidoSeleccionado.id,
-        ...payload,
-      });
+        await Linking.openURL(url);
 
-      await api.put(
-        `/ventas/${pedidoSeleccionado.id}/confirmar-entrega`,
-        payload
-      );
-
-      setPedidos((actuales) =>
-        actuales.filter((p) => p.id !== pedidoSeleccionado.id)
-      );
-      setModalVisible(false);
-      cargarResumenHoy();
-
-      Alert.alert(
-        'Entrega confirmada',
-        'Se descontó la carga y se registró el cobro correctamente.'
-      );
-    } catch (error) {
-      const data = error?.response?.data;
-
-      // Usamos console.log en lugar de console.error para evitar que Expo
-      // muestre la pantalla roja por un error HTTP controlado (400).
-      console.log('Entrega rechazada por la API:', data || error?.message);
-
-      let mensaje =
-        data?.error ||
-        data?.message ||
-        data?.mensaje ||
-        'No se pudo confirmar la entrega.';
-
-      if (Array.isArray(data?.errors) && data.errors.length > 0) {
-        mensaje =
-          data.errors[0]?.defaultMessage ||
-          data.errors[0]?.message ||
-          mensaje;
+        return;
       }
 
-      Alert.alert('No se pudo confirmar', mensaje);
-    } finally {
-      setGuardando(false);
+      Alert.alert(
+        "Sin dirección",
+        "Este cliente no tiene dirección registrada."
+      );
+    } catch {
+      Alert.alert(
+        "Error",
+        "No se pudo abrir Google Maps."
+      );
     }
   };
 
-  const reportarIncidencia = (pedido) => {
-    if (!repartidorId) {
-      Alert.alert('Error', 'No se pudo identificar al repartidor.');
+  // ============================================
+  // ABRIR MODAL DE VENTA
+  // ============================================
+
+  const abrirModalVenta = (cliente) => {
+    setClienteActivo(cliente);
+
+    setGarrafonesEntregados("1");
+    setEnvasesVacios("0");
+
+    setPrecioUnitario(
+      String(
+        cliente?.precioPorGarrafon ?? ""
+      )
+    );
+
+    setMetodoCobro("EFECTIVO");
+    setObservaciones("");
+
+    setModalVisible(true);
+  };
+
+  // ============================================
+  // TOTAL DE LA VENTA
+  // ============================================
+
+  const cantidadNumerica = Number(
+    garrafonesEntregados || 0
+  );
+
+  const precioNumerico = Number(
+    precioUnitario || 0
+  );
+
+  const totalVenta =
+    cantidadNumerica *
+    precioNumerico;
+
+  // ============================================
+  // CONFIRMAR VENTA
+  // ============================================
+
+  const confirmarVenta = async () => {
+    if (!clienteActivo) {
+      Alert.alert(
+        "Error",
+        "No hay un cliente seleccionado."
+      );
+
       return;
     }
 
-    const enviar = async (motivo) => {
-      try {
-        await api.put(`/ventas/${pedido.id}/reportar-incidencia`, {
-          repartidorId: Number(repartidorId),
-          motivo,
-          observaciones: '',
-        });
+    if (!repartidorId) {
+      Alert.alert(
+        "Error",
+        "No se pudo identificar al repartidor."
+      );
 
-        setPedidos((actuales) => actuales.filter((p) => p.id !== pedido.id));
-        Alert.alert('Incidencia registrada', 'El reporte quedó guardado.');
-      } catch (error) {
-        Alert.alert(
-          'Error',
-          error.response?.data?.error || 'No se pudo registrar la incidencia.'
-        );
-      }
+      return;
+    }
+
+    const cantidad = Number(
+      garrafonesEntregados
+    );
+
+    const vacios = Number(
+      envasesVacios
+    );
+
+    const precio = Number(
+      precioUnitario
+    );
+
+    // ========================================
+    // VALIDACIONES
+    // ========================================
+
+    if (
+      !Number.isFinite(cantidad) ||
+      cantidad <= 0
+    ) {
+      Alert.alert(
+        "Dato inválido",
+        "Ingresa una cantidad válida de garrafones."
+      );
+
+      return;
+    }
+
+    if (!Number.isInteger(cantidad)) {
+      Alert.alert(
+        "Dato inválido",
+        "Los garrafones deben manejarse en unidades completas."
+      );
+
+      return;
+    }
+
+    if (
+      !Number.isFinite(vacios) ||
+      vacios < 0
+    ) {
+      Alert.alert(
+        "Dato inválido",
+        "Los envases vacíos no pueden ser negativos."
+      );
+
+      return;
+    }
+
+    if (!Number.isInteger(vacios)) {
+      Alert.alert(
+        "Dato inválido",
+        "Los envases vacíos deben manejarse en unidades completas."
+      );
+
+      return;
+    }
+
+    if (
+      !Number.isFinite(precio) ||
+      precio <= 0
+    ) {
+      Alert.alert(
+        "Dato inválido",
+        "Ingresa un precio válido."
+      );
+
+      return;
+    }
+
+    if (
+      cantidad >
+      Number(garrafonesCamioneta)
+    ) {
+      Alert.alert(
+        "Carga insuficiente",
+        `Solo tienes ${garrafonesCamioneta} garrafón(es) disponibles.`
+      );
+
+      return;
+    }
+
+    // ========================================
+    // DATOS PARA LA API
+    // ========================================
+
+    const payload = {
+      clienteId: Number(
+        clienteActivo.id
+      ),
+
+      repartidorId: Number(
+        repartidorId
+      ),
+
+      garrafonesEntregados:
+        cantidad,
+
+      envasesVaciosRecibidos:
+        vacios,
+
+      precioUnitario:
+        precio,
+
+      metodoCobro,
+
+      observaciones:
+        observaciones.trim(),
     };
 
-    Alert.alert(
-      'Reportar incidencia',
-      `Pedido ${pedido.folio || pedido.id}`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
+    try {
+      setProcesando(true);
+
+      console.log(
+        "Registrando venta en ruta:",
+        payload
+      );
+
+      const token = await getToken();
+
+      const response = await api.post(
+        "/ventas/ruta/registrar",
+        payload,
         {
-          text: 'Cliente ausente',
-          onPress: () => enviar('CLIENTE_AUSENTE'),
+          headers: {
+            Authorization: token
+              ? `Bearer ${token}`
+              : "",
+          },
+        }
+      );
+
+      console.log(
+        "Venta registrada:",
+        response.data
+      );
+
+      setModalVisible(false);
+
+      /*
+       * IMPORTANTE:
+       * Ya no incrementamos manualmente
+       * monedero/vacíos/atendidos.
+       *
+       * Volvemos a consultar la API y la API
+       * se convierte en la fuente real.
+       */
+      await cargarCargaActiva();
+
+      await cargarEntregasHoy(
+        clientes
+      );
+
+      const total =
+        cantidad * precio;
+
+      Alert.alert(
+        "✅ Venta registrada",
+        [
+          `Cliente: ${clienteActivo.nombre}`,
+          `Garrafones: ${cantidad}`,
+          `Precio: $${precio.toFixed(2)}`,
+          `Total: $${total.toFixed(2)}`,
+          `Método: ${metodoCobro}`,
+        ].join("\n")
+      );
+    } catch (error) {
+      const data =
+        error?.response?.data;
+
+      console.log(
+        "Venta rechazada por la API:",
+        data || error?.message
+      );
+
+      const mensaje =
+        data?.error ||
+        data?.message ||
+        data?.mensaje ||
+        "No fue posible registrar la venta.";
+
+      Alert.alert(
+        "No se pudo registrar",
+        mensaje
+      );
+    } finally {
+      setProcesando(false);
+    }
+  };
+
+  // ============================================
+  // CLIENTE AUSENTE
+  // ============================================
+
+  const marcarAusente = (cliente) => {
+    Alert.alert(
+      "Cliente ausente",
+      `¿Confirmas que ${cliente.nombre} no se encontró disponible?`,
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
         },
         {
-          text: 'Sin envases',
-          onPress: () => enviar('SIN_ENVASES'),
+          text: "Confirmar",
+
+          onPress: () => {
+            /*
+             * Por ahora este estado sigue siendo
+             * local. Después podemos registrar
+             * también la incidencia en Java.
+             */
+            setAtendidos(
+              (actual) => ({
+                ...actual,
+                [cliente.id]:
+                  "ausente",
+              })
+            );
+          },
         },
       ]
     );
   };
 
-  const moneda = (valor) => `$${Number(valor || 0).toFixed(2)}`;
+  // ============================================
+  // CLIENTES PENDIENTES / ATENDIDOS
+  // ============================================
 
-  if (cargando) {
+  const pendientes =
+    clientes.filter(
+      (cliente) =>
+        !atendidos[cliente.id]
+    );
+
+  const completados =
+    clientes.filter(
+      (cliente) =>
+        atendidos[cliente.id]
+    );
+
+  // ============================================
+  // CARGANDO
+  // ============================================
+
+  if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.secondary} />
-        <Text style={styles.loadingText}>Cargando pedidos...</Text>
+      <View style={styles.container}>
+        <LinearGradient
+          colors={[
+            "#0F1B2D",
+            "#0073BB",
+          ]}
+          style={styles.header}
+          start={{
+            x: 0,
+            y: 0,
+          }}
+          end={{
+            x: 1,
+            y: 1,
+          }}
+        >
+          <Text
+            style={
+              styles.headerTitle
+            }
+          >
+            🗺️ Mi Ruta
+          </Text>
+        </LinearGradient>
+
+        <View style={styles.centered}>
+          <ActivityIndicator
+            size="large"
+            color={
+              colors.secondary
+            }
+          />
+
+          <Text
+            style={
+              styles.loadingText
+            }
+          >
+            Cargando ruta...
+          </Text>
+        </View>
       </View>
     );
   }
 
+  // ============================================
+  // INTERFAZ
+  // ============================================
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>📦 Pedidos por entregar</Text>
-        <Text style={styles.headerSubtitle}>HU-015 · Confirma entrega y cobro</Text>
+      {/* ======================================
+          HEADER
+      ====================================== */}
+
+      <LinearGradient
+        colors={[
+          "#0F1B2D",
+          "#0073BB",
+        ]}
+        style={styles.header}
+        start={{
+          x: 0,
+          y: 0,
+        }}
+        end={{
+          x: 1,
+          y: 1,
+        }}
+      >
+        <View
+          style={
+            styles.headerContent
+          }
+        >
+          <Text
+            style={
+              styles.headerTitle
+            }
+          >
+            🗺️ Mi Ruta
+          </Text>
+
+          <Text
+            style={
+              styles.headerSubtitle
+            }
+          >
+            {pendientes.length} pendientes
+            {" · "}
+            {completados.length} atendidos
+          </Text>
+        </View>
+
+        <View style={styles.counter}>
+          <Text
+            style={
+              styles.counterText
+            }
+          >
+            {pendientes.length}
+          </Text>
+        </View>
+      </LinearGradient>
+
+      {/* ======================================
+          ESTADO CAMIONETA
+      ====================================== */}
+
+      <View
+        style={
+          styles.panelCamioneta
+        }
+      >
+        <View
+          style={styles.panelItem}
+        >
+          <Text
+            style={
+              styles.panelEmoji
+            }
+          >
+            🚰
+          </Text>
+
+          <Text
+            style={
+              styles.panelValor
+            }
+          >
+            {garrafonesCamioneta}
+          </Text>
+
+          <Text
+            style={
+              styles.panelLabel
+            }
+          >
+            Llenos
+          </Text>
+        </View>
+
+        <View
+          style={
+            styles.panelDivider
+          }
+        />
+
+        <View
+          style={styles.panelItem}
+        >
+          <Text
+            style={
+              styles.panelEmoji
+            }
+          >
+            ♻️
+          </Text>
+
+          <Text
+            style={
+              styles.panelValor
+            }
+          >
+            {envasesVaciosCamioneta}
+          </Text>
+
+          <Text
+            style={
+              styles.panelLabel
+            }
+          >
+            Vacíos
+          </Text>
+        </View>
+
+        <View
+          style={
+            styles.panelDivider
+          }
+        />
+
+        <View
+          style={styles.panelItem}
+        >
+          <Text
+            style={
+              styles.panelEmoji
+            }
+          >
+            💵
+          </Text>
+
+          <Text
+            style={[
+              styles.panelValor,
+              {
+                color:
+                  "#3AC87A",
+              },
+            ]}
+          >
+            $
+            {Number(
+              monedero
+            ).toFixed(2)}
+          </Text>
+
+          <Text
+            style={
+              styles.panelLabel
+            }
+          >
+            Monedero
+          </Text>
+        </View>
       </View>
 
-      {resumenHoy && (
-        <View style={styles.balanceBar}>
-          <View>
-            <Text style={styles.balanceLabel}>Cobrado hoy</Text>
-            <Text style={styles.balanceValue}>{moneda(resumenHoy.totalCobrado)}</Text>
-          </View>
-          <View style={styles.balanceRight}>
-            <Text style={styles.balanceSmall}>💵 {moneda(resumenHoy.totalEfectivo)}</Text>
-            <Text style={styles.balanceSmall}>🏦 {moneda(resumenHoy.totalTransferencias)}</Text>
-          </View>
-        </View>
-      )}
+      {/* ======================================
+          LISTA DE CLIENTES
+      ====================================== */}
 
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={
+          styles.scroll
+        }
         refreshControl={
           <RefreshControl
-            refreshing={refrescando}
-            onRefresh={() => {
-              setRefrescando(true);
-              cargarPedidos(false);
-            }}
+            refreshing={
+              refreshing
+            }
+            onRefresh={
+              onRefresh
+            }
+            colors={[
+              colors.secondary,
+            ]}
           />
         }
       >
-        {pedidos.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyEmoji}>✅</Text>
-            <Text style={styles.emptyTitle}>No hay pedidos pendientes</Text>
-            <Text style={styles.emptyText}>
-              Cuando exista un pedido aparecerá aquí.
+        {sinRuta ? (
+          <View
+            style={
+              styles.emptyContainer
+            }
+          >
+            <Text
+              style={
+                styles.emptyEmoji
+              }
+            >
+              🗺️
+            </Text>
+
+            <Text
+              style={
+                styles.emptyTitle
+              }
+            >
+              Sin ruta activa
+            </Text>
+
+            <Text
+              style={
+                styles.emptySubtitle
+              }
+            >
+              El encargado aún no ha
+              activado una ruta para ti.
+            </Text>
+          </View>
+        ) : clientes.length === 0 ? (
+          <View
+            style={
+              styles.emptyContainer
+            }
+          >
+            <Text
+              style={
+                styles.emptyEmoji
+              }
+            >
+              📦
+            </Text>
+
+            <Text
+              style={
+                styles.emptyTitle
+              }
+            >
+              No hay clientes
+            </Text>
+
+            <Text
+              style={
+                styles.emptySubtitle
+              }
+            >
+              La ruta no tiene clientes
+              asignados.
             </Text>
           </View>
         ) : (
-          pedidos.map((pedido) => (
-            <View key={pedido.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View>
-                  <Text style={styles.folio}>{pedido.folio || `Pedido #${pedido.id}`}</Text>
-                  <Text style={styles.client}>
-                    👤 {pedido.nombreCliente || 'Cliente sin nombre'}
-                  </Text>
+          clientes.map(
+            (cliente, index) => {
+              const estado =
+                atendidos[
+                  cliente.id
+                ];
+
+              const yaAtendido =
+                Boolean(estado);
+
+              return (
+                <View
+                  key={
+                    cliente.id
+                  }
+                  style={[
+                    styles.clienteCard,
+
+                    yaAtendido &&
+                      styles.clienteCardAtendido,
+                  ]}
+                >
+                  {/* ==========================
+                      CLIENTE
+                  ========================== */}
+
+                  <View
+                    style={
+                      styles.clienteHeader
+                    }
+                  >
+                    <View
+                      style={
+                        styles.ordenBadge
+                      }
+                    >
+                      <Text
+                        style={
+                          styles.ordenTexto
+                        }
+                      >
+                        #
+                        {cliente.ordenEnRuta ??
+                          index + 1}
+                      </Text>
+                    </View>
+
+                    <View
+                      style={{
+                        flex: 1,
+                      }}
+                    >
+                      <Text
+                        style={
+                          styles.clienteNombre
+                        }
+                      >
+                        {
+                          cliente.nombre
+                        }
+                      </Text>
+
+                      <Text
+                        style={
+                          styles.clienteDomicilio
+                        }
+                      >
+                        📍{" "}
+                        {cliente.domicilio ||
+                          "Sin domicilio"}
+                      </Text>
+                    </View>
+
+                    <View
+                      style={[
+                        styles.estadoBadge,
+
+                        yaAtendido &&
+                          styles.estadoBadgeAtendido,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.estadoText,
+
+                          yaAtendido &&
+                            styles.estadoTextAtendido,
+                        ]}
+                      >
+                        {estado ===
+                        "ausente"
+                          ? "🚫 AUSENTE"
+                          : yaAtendido
+                            ? "✅ ATENDIDO"
+                            : "⏳ PENDIENTE"}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* ==========================
+                      INFORMACIÓN
+                  ========================== */}
+
+                  <View
+                    style={
+                      styles.infoRow
+                    }
+                  >
+                    <View
+                      style={
+                        styles.infoItem
+                      }
+                    >
+                      <Text
+                        style={
+                          styles.infoLabel
+                        }
+                      >
+                        💰 Precio
+                      </Text>
+
+                      <Text
+                        style={
+                          styles.infoValor
+                        }
+                      >
+                        $
+                        {Number(
+                          cliente
+                            .precioPorGarrafon ??
+                            0
+                        ).toFixed(2)}
+                      </Text>
+                    </View>
+
+                    <View
+                      style={
+                        styles.infoItem
+                      }
+                    >
+                      <Text
+                        style={
+                          styles.infoLabel
+                        }
+                      >
+                        🚰 Preferencia
+                      </Text>
+
+                      <Text
+                        style={
+                          styles.infoValor
+                        }
+                      >
+                        {cliente
+                          ?.garrafonPreferencia
+                          ?.nombre ||
+                          "—"}
+                      </Text>
+                    </View>
+
+                    <View
+                      style={
+                        styles.infoItem
+                      }
+                    >
+                      <Text
+                        style={
+                          styles.infoLabel
+                        }
+                      >
+                        📅 Días
+                      </Text>
+
+                      <Text
+                        style={
+                          styles.infoValor
+                        }
+                      >
+                        {cliente.diasReparto ||
+                          "—"}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* ==========================
+                      RESUMEN ATENDIDO
+                  ========================== */}
+
+                  {yaAtendido &&
+                    typeof estado ===
+                      "object" && (
+                      <View
+                        style={
+                          styles.resumenAtendido
+                        }
+                      >
+                        <Text
+                          style={
+                            styles.resumenAtendidoTexto
+                          }
+                        >
+                          ✅ Entregados:{" "}
+                          {
+                            estado.cantidad
+                          }
+                          {" · "}
+                          Vacíos:{" "}
+                          {
+                            estado.vacios
+                          }
+                          {" · "}$
+                          {Number(
+                            estado.total
+                          ).toFixed(2)}
+                          {" · "}
+                          {
+                            estado.metodoCobro
+                          }
+                        </Text>
+                      </View>
+                    )}
+
+                  {/* ==========================
+                      BOTONES
+                  ========================== */}
+
+                  {!yaAtendido && (
+                    <>
+                      <View
+                        style={
+                          styles.botonesRow
+                        }
+                      >
+                        <TouchableOpacity
+                          style={
+                            styles.btnMapa
+                          }
+                          onPress={() =>
+                            abrirMapa(
+                              cliente
+                            )
+                          }
+                        >
+                          <Text
+                            style={
+                              styles.btnMapaText
+                            }
+                          >
+                            📍 Navegar
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={
+                            styles.btnEntregar
+                          }
+                          onPress={() =>
+                            abrirModalVenta(
+                              cliente
+                            )
+                          }
+                        >
+                          <Text
+                            style={
+                              styles.btnEntregarText
+                            }
+                          >
+                            💧 Vender
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <TouchableOpacity
+                        style={
+                          styles.btnAusente
+                        }
+                        onPress={() =>
+                          marcarAusente(
+                            cliente
+                          )
+                        }
+                      >
+                        <Text
+                          style={
+                            styles.btnAusenteText
+                          }
+                        >
+                          🚫 Cliente ausente
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
                 </View>
-                <Text style={styles.total}>{moneda(pedido.total)}</Text>
-              </View>
-
-              <View style={styles.divider} />
-
-              {pedido.detalles?.map((detalle, index) => (
-                <Text key={detalle.id || index} style={styles.itemText}>
-                  {detalle.cantidad} × {detalle.productoNombre}
-                </Text>
-              ))}
-
-              <Text style={styles.meta}>
-                Pago del pedido: {pedido.metodoPago || 'Sin dato'}
-              </Text>
-
-              <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={() => abrirConfirmacion(pedido)}
-
-
-              >
-
-              <TouchableOpacity
-  style={styles.secondaryButton}
-  onPress={() => abrirMapa(pedido.direccion)}
->
-  <Text style={styles.secondaryButtonText}>
-    📍 Navegar
-  </Text>
-</TouchableOpacity>
-                <Text style={styles.primaryButtonText}>✅ Confirmar entrega</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => reportarIncidencia(pedido)}
-              >
-                <Text style={styles.secondaryButtonText}>⚠️ Reportar incidencia</Text>
-              </TouchableOpacity>
-            </View>
-          ))
+              );
+            }
+          )
         )}
       </ScrollView>
+
+      {/* ======================================
+          MODAL DE VENTA
+      ====================================== */}
 
       <Modal
         visible={modalVisible}
         transparent
         animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={() =>
+          setModalVisible(false)
+        }
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Confirmar entrega</Text>
-            <Text style={styles.modalSubtitle}>
-              {pedidoSeleccionado?.folio || ''} · {pedidoSeleccionado?.nombreCliente || 'Cliente'}
-            </Text>
+        <View
+          style={
+            styles.modalOverlay
+          }
+        >
+          <ScrollView
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent:
+                "flex-end",
+            }}
+          >
+            <View
+              style={
+                styles.modalContainer
+              }
+            >
+              <Text
+                style={
+                  styles.modalTitle
+                }
+              >
+                Registrar venta
+              </Text>
 
-            <Text style={styles.label}>Garrafones entregados</Text>
-            <TextInput
-              value={garrafones}
-              onChangeText={setGarrafones}
-              keyboardType="numeric"
-              style={styles.input}
-              placeholder="Ej. 4"
-            />
+              {clienteActivo && (
+                <>
+                  <Text
+                    style={
+                      styles.modalCliente
+                    }
+                  >
+                    {
+                      clienteActivo.nombre
+                    }
+                  </Text>
 
-            <Text style={styles.label}>Envases vacíos recibidos</Text>
-            <TextInput
-              value={envasesVacios}
-              onChangeText={setEnvasesVacios}
-              keyboardType="numeric"
-              style={styles.input}
-              placeholder="Ej. 4"
-            />
+                  <Text
+                    style={
+                      styles.modalDomicilio
+                    }
+                  >
+                    📍{" "}
+                    {
+                      clienteActivo.domicilio
+                    }
+                  </Text>
 
-            <Text style={styles.label}>Forma de cobro</Text>
-            <View style={styles.methodRow}>
-              {['EFECTIVO', 'TRANSFERENCIA'].map((metodo) => (
+                  <Text
+                    style={
+                      styles.modalPreferencia
+                    }
+                  >
+                    🚰{" "}
+                    {clienteActivo
+                      ?.garrafonPreferencia
+                      ?.nombre ||
+                      "Garrafón"}
+                  </Text>
+                </>
+              )}
+
+              {/* CANTIDAD */}
+
+              <Text
+                style={
+                  styles.modalLabel
+                }
+              >
+                Garrafones a entregar
+              </Text>
+
+              <TextInput
+                style={
+                  styles.modalInput
+                }
+                value={
+                  garrafonesEntregados
+                }
+                onChangeText={
+                  setGarrafonesEntregados
+                }
+                keyboardType="numeric"
+                placeholder="Cantidad"
+                placeholderTextColor={
+                  colors.textSecondary
+                }
+              />
+
+              <Text
+                style={
+                  styles.modalHint
+                }
+              >
+                Disponibles en camioneta:{" "}
+                {
+                  garrafonesCamioneta
+                }
+              </Text>
+
+              {/* PRECIO */}
+
+              <Text
+                style={
+                  styles.modalLabel
+                }
+              >
+                Precio por garrafón
+              </Text>
+
+              <TextInput
+                style={
+                  styles.modalInput
+                }
+                value={
+                  precioUnitario
+                }
+                onChangeText={
+                  setPrecioUnitario
+                }
+                keyboardType="decimal-pad"
+                placeholder="Precio"
+                placeholderTextColor={
+                  colors.textSecondary
+                }
+              />
+
+              {/* VACÍOS */}
+
+              <Text
+                style={
+                  styles.modalLabel
+                }
+              >
+                Envases vacíos recibidos
+              </Text>
+
+              <TextInput
+                style={
+                  styles.modalInput
+                }
+                value={
+                  envasesVacios
+                }
+                onChangeText={
+                  setEnvasesVacios
+                }
+                keyboardType="numeric"
+                placeholder="0"
+                placeholderTextColor={
+                  colors.textSecondary
+                }
+              />
+
+              {/* MÉTODO */}
+
+              <Text
+                style={
+                  styles.modalLabel
+                }
+              >
+                Método de cobro
+              </Text>
+
+              <View
+                style={
+                  styles.metodosRow
+                }
+              >
                 <TouchableOpacity
-                  key={metodo}
                   style={[
-                    styles.methodButton,
-                    metodoCobro === metodo && styles.methodButtonActive,
+                    styles.metodoBtn,
+
+                    metodoCobro ===
+                      "EFECTIVO" &&
+                      styles.metodoBtnActivo,
                   ]}
-                  onPress={() => setMetodoCobro(metodo)}
+                  onPress={() =>
+                    setMetodoCobro(
+                      "EFECTIVO"
+                    )
+                  }
                 >
                   <Text
                     style={[
-                      styles.methodText,
-                      metodoCobro === metodo && styles.methodTextActive,
+                      styles.metodoBtnText,
+
+                      metodoCobro ===
+                        "EFECTIVO" &&
+                        styles.metodoBtnTextActivo,
                     ]}
                   >
-                    {metodo === 'EFECTIVO' ? '💵 Efectivo' : '🏦 Transferencia'}
+                    💵 Efectivo
                   </Text>
                 </TouchableOpacity>
-              ))}
-            </View>
 
-            <Text style={styles.label}>Pago cobrado</Text>
-            <TextInput
-              value={montoCobrado}
-              onChangeText={setMontoCobrado}
-              keyboardType="decimal-pad"
-              style={styles.input}
-              placeholder="0.00"
-            />
+                <TouchableOpacity
+                  style={[
+                    styles.metodoBtn,
 
-            <Text style={styles.label}>Observaciones</Text>
-            <TextInput
-              value={observaciones}
-              onChangeText={setObservaciones}
-              style={[styles.input, styles.multiline]}
-              multiline
-              placeholder="Opcional"
-            />
+                    metodoCobro ===
+                      "TRANSFERENCIA" &&
+                      styles.metodoBtnActivo,
+                  ]}
+                  onPress={() =>
+                    setMetodoCobro(
+                      "TRANSFERENCIA"
+                    )
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.metodoBtnText,
 
-            <TouchableOpacity
-              style={[styles.primaryButton, guardando && styles.disabled]}
-              onPress={confirmarEntrega}
-              disabled={guardando}
-            >
-              <Text style={styles.primaryButtonText}>
-                {guardando ? 'Guardando...' : 'Confirmar entrega'}
+                      metodoCobro ===
+                        "TRANSFERENCIA" &&
+                        styles.metodoBtnTextActivo,
+                    ]}
+                  >
+                    🏦 Transferencia
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* TOTAL */}
+
+              <View
+                style={
+                  styles.totalBox
+                }
+              >
+                <Text
+                  style={
+                    styles.totalLabel
+                  }
+                >
+                  Total estimado
+                </Text>
+
+                <Text
+                  style={
+                    styles.totalValue
+                  }
+                >
+                  $
+                  {Number(
+                    totalVenta
+                  ).toFixed(2)}
+                </Text>
+              </View>
+
+              {/* OBSERVACIONES */}
+
+              <Text
+                style={
+                  styles.modalLabel
+                }
+              >
+                Observaciones
               </Text>
-            </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setModalVisible(false)}
-              disabled={guardando}
-            >
-              <Text style={styles.cancelText}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
+              <TextInput
+                style={[
+                  styles.modalInput,
+                  styles.observacionesInput,
+                ]}
+                value={
+                  observaciones
+                }
+                onChangeText={
+                  setObservaciones
+                }
+                placeholder="Opcional"
+                placeholderTextColor={
+                  colors.textSecondary
+                }
+                multiline
+              />
+
+              {/* BOTONES */}
+
+              <View
+                style={
+                  styles.modalBotones
+                }
+              >
+                <TouchableOpacity
+                  style={
+                    styles.modalBtnCancelar
+                  }
+                  onPress={() =>
+                    setModalVisible(
+                      false
+                    )
+                  }
+                  disabled={
+                    procesando
+                  }
+                >
+                  <Text
+                    style={
+                      styles.modalBtnCancelarText
+                    }
+                  >
+                    Cancelar
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.modalBtnConfirmar,
+
+                    procesando && {
+                      opacity: 0.6,
+                    },
+                  ]}
+                  onPress={
+                    confirmarVenta
+                  }
+                  disabled={
+                    procesando
+                  }
+                >
+                  {procesando ? (
+                    <ActivityIndicator
+                      color={
+                        colors.white
+                      }
+                    />
+                  ) : (
+                    <Text
+                      style={
+                        styles.modalBtnConfirmarText
+                      }
+                    >
+                      Confirmar venta
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
         </View>
       </Modal>
     </View>
   );
 }
 
+// ============================================
+// ESTILOS
+// ============================================
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor:
+      colors.background,
   },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  loadingText: {
-    marginTop: 10,
-    color: colors.textSecondary,
-  },
+
   header: {
-    backgroundColor: colors.primary,
-    padding: 20,
+    paddingTop: 55,
+    paddingBottom: 18,
+    paddingHorizontal: 20,
+
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent:
+      "space-between",
   },
+
+  headerContent: {
+    flex: 1,
+  },
+
   headerTitle: {
     color: colors.white,
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: "bold",
   },
+
   headerSubtitle: {
-    marginTop: 4,
-    color: '#E9D8C8',
+    color:
+      "rgba(255,255,255,0.7)",
+    marginTop: 3,
+    fontSize: 12,
   },
-  balanceBar: {
-    margin: 16,
-    marginBottom: 0,
-    backgroundColor: colors.white,
+
+  counter: {
+    minWidth: 42,
+    height: 42,
+    borderRadius: 21,
+
+    backgroundColor:
+      "rgba(255,255,255,0.15)",
+
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  counterText: {
+    color: colors.white,
+    fontSize: 17,
+    fontWeight: "bold",
+  },
+
+  panelCamioneta: {
+    flexDirection: "row",
+
+    backgroundColor:
+      colors.surface,
+
+    marginHorizontal: 16,
+    marginTop: 12,
+
     borderRadius: 14,
-    padding: 14,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+
+    borderWidth: 1,
+    borderColor:
+      colors.border,
+
+    padding: 12,
   },
-  balanceLabel: {
-    color: colors.textSecondary,
-    fontSize: 12,
+
+  panelItem: {
+    flex: 1,
+    alignItems: "center",
   },
-  balanceValue: {
+
+  panelEmoji: {
+    fontSize: 20,
+  },
+
+  panelValor: {
+    fontSize: 18,
+    fontWeight: "800",
+
+    color:
+      colors.textPrimary,
+
     marginTop: 2,
-    color: colors.primary,
-    fontSize: 22,
-    fontWeight: '800',
   },
-  balanceRight: {
-    alignItems: 'flex-end',
+
+  panelLabel: {
+    fontSize: 10,
+
+    color:
+      colors.textSecondary,
+
+    marginTop: 2,
   },
-  balanceSmall: {
-    color: colors.textSecondary,
-    fontWeight: '700',
-    fontSize: 12,
-    marginVertical: 1,
+
+  panelDivider: {
+    width: 1,
+
+    backgroundColor:
+      colors.border,
+
+    marginVertical: 4,
   },
+
   scroll: {
     padding: 16,
     paddingBottom: 40,
   },
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
-    elevation: 2,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  folio: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
-  client: {
-    marginTop: 5,
-    color: colors.textSecondary,
-  },
-  total: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.secondary,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#E7DDD4',
-    marginVertical: 12,
-  },
-  itemText: {
-    color: colors.textPrimary,
-    marginBottom: 5,
-  },
-  meta: {
-    marginTop: 8,
-    color: colors.textSecondary,
-  },
-  primaryButton: {
-    marginTop: 14,
-    backgroundColor: colors.secondary,
-    borderRadius: 12,
-    padding: 14,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: colors.white,
-    fontWeight: '800',
-  },
-  secondaryButton: {
-    marginTop: 9,
-    borderWidth: 1,
-    borderColor: '#D1A381',
-    borderRadius: 12,
-    padding: 13,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: colors.primary,
-    fontWeight: '700',
-  },
-  emptyCard: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 30,
-    alignItems: 'center',
-  },
-  emptyEmoji: {
-    fontSize: 42,
-  },
-  emptyTitle: {
-    marginTop: 10,
-    fontSize: 19,
-    fontWeight: '800',
-  },
-  emptyText: {
-    marginTop: 6,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  modalBackdrop: {
+
+  centered: {
     flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  modalCard: {
-    backgroundColor: colors.white,
+
+  loadingText: {
+    marginTop: 12,
+
+    color:
+      colors.textSecondary,
+  },
+
+  emptyContainer: {
+    paddingTop: 80,
+    alignItems: "center",
+    paddingHorizontal: 30,
+  },
+
+  emptyEmoji: {
+    fontSize: 60,
+    marginBottom: 15,
+  },
+
+  emptyTitle: {
+    color:
+      colors.textPrimary,
+
+    fontSize: 20,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+
+  emptySubtitle: {
+    color:
+      colors.textSecondary,
+
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 6,
+  },
+
+  clienteCard: {
+    backgroundColor:
+      colors.surface,
+
+    borderRadius: 20,
+
+    padding: 16,
+    marginBottom: 16,
+
+    borderWidth: 1,
+    borderColor:
+      colors.border,
+  },
+
+  clienteCardAtendido: {
+    opacity: 0.65,
+    borderColor:
+      "#3AC87A44",
+  },
+
+  clienteHeader: {
+    flexDirection: "row",
+    alignItems:
+      "flex-start",
+
+    gap: 10,
+    marginBottom: 12,
+  },
+
+  ordenBadge: {
+    width: 34,
+    height: 34,
+
+    borderRadius: 17,
+
+    backgroundColor:
+      colors.primary,
+
+    alignItems: "center",
+    justifyContent: "center",
+
+    flexShrink: 0,
+  },
+
+  ordenTexto: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+
+  clienteNombre: {
+    color:
+      colors.textPrimary,
+
+    fontSize: 16,
+    fontWeight: "700",
+  },
+
+  clienteDomicilio: {
+    color:
+      colors.textSecondary,
+
+    fontSize: 12,
+    marginTop: 3,
+  },
+
+  estadoBadge: {
+    backgroundColor:
+      "#1A1500",
+
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+
+    borderRadius: 20,
+
+    borderWidth: 1,
+    borderColor:
+      "#FF990044",
+  },
+
+  estadoBadgeAtendido: {
+    backgroundColor:
+      "#0D2B1A",
+
+    borderColor:
+      "#3AC87A44",
+  },
+
+  estadoText: {
+    color:
+      colors.secondary,
+
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+
+  estadoTextAtendido: {
+    color: "#3AC87A",
+  },
+
+  infoRow: {
+    flexDirection: "row",
+
+    backgroundColor:
+      colors.surfaceAlt,
+
+    borderRadius: 12,
+
+    padding: 10,
+    marginBottom: 10,
+  },
+
+  infoItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+
+  infoLabel: {
+    color:
+      colors.textSecondary,
+
+    fontSize: 9,
+    textAlign: "center",
+  },
+
+  infoValor: {
+    color:
+      colors.textPrimary,
+
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 2,
+    textAlign: "center",
+  },
+
+  resumenAtendido: {
+    backgroundColor:
+      "#0D2B1A",
+
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 4,
+  },
+
+  resumenAtendidoTexto: {
+    color: "#3AC87A",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  botonesRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 8,
+  },
+
+  btnMapa: {
+    flex: 1,
+
+    backgroundColor:
+      colors.primary,
+
+    borderRadius: 12,
+    paddingVertical: 11,
+
+    alignItems: "center",
+  },
+
+  btnMapaText: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: "bold",
+  },
+
+  btnEntregar: {
+    flex: 1,
+
+    backgroundColor:
+      colors.success,
+
+    borderRadius: 12,
+    paddingVertical: 11,
+
+    alignItems: "center",
+  },
+
+  btnEntregarText: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: "bold",
+  },
+
+  btnAusente: {
+    backgroundColor:
+      colors.errorLight,
+
+    borderRadius: 12,
+    paddingVertical: 9,
+
+    alignItems: "center",
+
+    borderWidth: 1,
+    borderColor:
+      "#E0525233",
+  },
+
+  btnAusenteText: {
+    color: colors.error,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  modalOverlay: {
+    flex: 1,
+
+    backgroundColor:
+      "rgba(0,0,0,0.75)",
+
+    justifyContent:
+      "flex-end",
+  },
+
+  modalContainer: {
+    backgroundColor:
+      colors.surface,
+
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 20,
-    maxHeight: '92%',
+
+    padding: 24,
+    paddingBottom: 40,
+
+    borderWidth: 1,
+    borderColor:
+      colors.border,
   },
+
   modalTitle: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: "800",
+
+    color:
+      colors.textPrimary,
+
+    marginBottom: 4,
   },
-  modalSubtitle: {
-    marginTop: 4,
-    marginBottom: 12,
-    color: colors.textSecondary,
+
+  modalCliente: {
+    fontSize: 15,
+    fontWeight: "700",
+
+    color:
+      colors.secondary,
+
+    marginBottom: 2,
   },
-  label: {
-    marginTop: 10,
-    marginBottom: 6,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D7C9BD',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    backgroundColor: '#FFFDF9',
-  },
-  multiline: {
-    minHeight: 70,
-    textAlignVertical: 'top',
-  },
-  methodRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  methodButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#D7C9BD',
-    borderRadius: 10,
-    padding: 11,
-    alignItems: 'center',
-  },
-  methodButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  methodText: {
-    color: colors.textPrimary,
-    fontWeight: '700',
+
+  modalDomicilio: {
     fontSize: 12,
+
+    color:
+      colors.textSecondary,
+
+    marginBottom: 4,
   },
-  methodTextActive: {
-    color: colors.white,
+
+  modalPreferencia: {
+    fontSize: 12,
+
+    color:
+      colors.textSecondary,
+
+    marginBottom: 10,
   },
-  cancelButton: {
+
+  modalLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+
+    color:
+      colors.textSecondary,
+
+    letterSpacing: 0.5,
+    textTransform:
+      "uppercase",
+
+    marginBottom: 6,
+    marginTop: 14,
+  },
+
+  modalInput: {
+    backgroundColor:
+      colors.surfaceAlt,
+
+    borderWidth: 1,
+    borderColor:
+      colors.border,
+
+    borderRadius: 10,
+
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+
+    fontSize: 15,
+
+    color:
+      colors.textPrimary,
+  },
+
+  modalHint: {
+    fontSize: 11,
+
+    color:
+      colors.textSecondary,
+
+    marginTop: 4,
+  },
+
+  metodosRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+
+  metodoBtn: {
+    flex: 1,
+
+    paddingVertical: 10,
+
+    borderRadius: 10,
+
+    backgroundColor:
+      colors.surfaceAlt,
+
+    borderWidth: 1,
+    borderColor:
+      colors.border,
+
+    alignItems: "center",
+  },
+
+  metodoBtnActivo: {
+    backgroundColor:
+      `${colors.primary}22`,
+
+    borderColor:
+      colors.primary,
+  },
+
+  metodoBtnText: {
+    fontSize: 13,
+
+    color:
+      colors.textSecondary,
+
+    fontWeight: "600",
+  },
+
+  metodoBtnTextActivo: {
+    color:
+      colors.primary,
+  },
+
+  totalBox: {
+    marginTop: 18,
+
+    backgroundColor:
+      colors.surfaceAlt,
+
+    borderWidth: 1,
+    borderColor:
+      colors.border,
+
+    borderRadius: 12,
     padding: 14,
-    alignItems: 'center',
+
+    flexDirection: "row",
+
+    alignItems: "center",
+
+    justifyContent:
+      "space-between",
   },
-  cancelText: {
-    color: colors.textSecondary,
-    fontWeight: '700',
+
+  totalLabel: {
+    color:
+      colors.textSecondary,
+
+    fontSize: 13,
+    fontWeight: "600",
   },
-  disabled: {
-    opacity: 0.55,
+
+  totalValue: {
+    color: "#3AC87A",
+
+    fontSize: 22,
+    fontWeight: "800",
+  },
+
+  observacionesInput: {
+    minHeight: 70,
+
+    textAlignVertical:
+      "top",
+  },
+
+  modalBotones: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 24,
+  },
+
+  modalBtnCancelar: {
+    flex: 1,
+
+    paddingVertical: 13,
+
+    borderRadius: 12,
+
+    backgroundColor:
+      colors.surfaceAlt,
+
+    borderWidth: 1,
+    borderColor:
+      colors.border,
+
+    alignItems: "center",
+  },
+
+  modalBtnCancelarText: {
+    color:
+      colors.textSecondary,
+
+    fontWeight: "600",
+  },
+
+  modalBtnConfirmar: {
+    flex: 1,
+
+    paddingVertical: 13,
+
+    borderRadius: 12,
+
+    backgroundColor:
+      colors.success,
+
+    alignItems: "center",
+  },
+
+  modalBtnConfirmarText: {
+    color: colors.white,
+    fontWeight: "700",
+    fontSize: 15,
   },
 });
