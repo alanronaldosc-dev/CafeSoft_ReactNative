@@ -15,10 +15,8 @@ import {
 
 const AuthContext = createContext(null);
 
-// Tiempo de sesión.
-// Se mantienen 30 segundos porque así estaba configurado
-// en tus cambios para probar la expiración.
-const TIEMPO_MAXIMO_SESION = 30 * 1000;
+// Tiempo máximo de sesión: 30 minutos.
+const TIEMPO_MAXIMO_SESION = 30 * 60 * 1000;
 
 export function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(null);
