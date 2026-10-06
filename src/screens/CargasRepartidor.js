@@ -9,27 +9,18 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
 import { useFocusEffect } from "@react-navigation/native";
-import axios from "axios";
-import { BASE_URL } from "../config/api";
+
+import api from "../config/api";
 import { useAuth } from "../context/AuthContext";
-
-const api = axios.create({
-  baseURL: BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-});
-
-
 
 function CargasRepartidor({ navigation }) {
   // ============================================
   // USUARIO AUTENTICADO
   // ============================================
 
-  const { usuario, cerrarSesion, getToken } = useAuth();
+  const { usuario, cerrarSesion } = useAuth();
 
   // ============================================
   // ESTADOS
@@ -113,18 +104,9 @@ function CargasRepartidor({ navigation }) {
         repartidorId
       );
 
-      const token = await getToken();
-
       const response = await api.get(
-        `/cargas/repartidor/${repartidorId}/pendientes`,
-        {
-          headers: {
-            Authorization: token ? `Bearer ${token}` : '',
-          },
-        }
+        `/cargas/repartidor/${repartidorId}/pendientes`
       );
-
-
 
       console.log(
         "Respuesta cargas pendientes:",
@@ -204,7 +186,7 @@ function CargasRepartidor({ navigation }) {
 
   const aceptarCarga = (carga) => {
     Alert.alert(
-      "Iniciar ruta",
+      "Aceptar carga",
       `¿Confirmas que recibiste ${carga.cantidad} ${
         carga.unidadMedida || "unidades"
       } de ${
@@ -235,36 +217,43 @@ function CargasRepartidor({ navigation }) {
       setAceptandoId(carga.id);
       setError("");
 
-      console.log("Aceptando carga:", carga.id);
-
-      const token = await getToken();
-
-      const response = await api.put(
-        `/cargas/${carga.id}/aceptar`,
-        {},
-        {
-          headers: {
-            Authorization: token ? `Bearer ${token}` : '',
-          },
-        }
+      console.log(
+        "Aceptando carga:",
+        carga.id
       );
 
-      console.log("Respuesta aceptar carga:", response.data);
+      const response = await api.put(
+        `/cargas/${carga.id}/aceptar`
+      );
+
+      console.log(
+        "Respuesta aceptar carga:",
+        response.data
+      );
 
       Alert.alert(
-        "Ruta iniciada",
-        "La ruta fue iniciada correctamente y ahora se encuentra en tránsito.",
+        "Carga aceptada",
+        "La carga fue aceptada correctamente y ahora se encuentra en tránsito.",
         [
           {
             text: "Continuar",
-            onPress: () => { cargarCargas(true); },
+            onPress: () => {
+              cargarCargas(true);
+            },
           },
         ]
       );
 
     } catch (err) {
-      console.error("Error al aceptar carga:", err);
-      console.error("Respuesta del servidor:", err.response?.data);
+      console.error(
+        "Error al aceptar carga:",
+        err
+      );
+
+      console.error(
+        "Respuesta del servidor:",
+        err.response?.data
+      );
 
       const mensaje =
         err.response?.data?.message ||
@@ -272,7 +261,10 @@ function CargasRepartidor({ navigation }) {
         err.response?.data?.error ||
         "No se pudo aceptar la carga.";
 
-      Alert.alert("Error", mensaje);
+      Alert.alert(
+        "Error",
+        mensaje
+      );
 
     } finally {
       setAceptandoId(null);
@@ -376,7 +368,7 @@ function CargasRepartidor({ navigation }) {
       <View style={styles.cargandoContainer}>
         <ActivityIndicator
           size="large"
-          color="#FF9900"
+          color="#7a4e39"
         />
 
         <Text style={styles.cargandoTexto}>
@@ -471,7 +463,7 @@ function CargasRepartidor({ navigation }) {
         </Text>
 
         <Text style={styles.bienvenidaTexto}>
-          Revisa la ruta asignada por el encargado
+          Revisa la carga asignada por el encargado
           antes de iniciar tu ruta.
         </Text>
       </View>
@@ -517,8 +509,8 @@ function CargasRepartidor({ navigation }) {
           <RefreshControl
             refreshing={actualizando}
             onRefresh={() => cargarCargas(true)}
-            colors={["#FF9900"]}
-            tintColor="#FF9900"
+            colors={["#7a4e39"]}
+            tintColor="#7a4e39"
           />
         }
         showsVerticalScrollIndicator={false}
@@ -532,11 +524,11 @@ function CargasRepartidor({ navigation }) {
 
           <View>
             <Text style={styles.resumenTitulo}>
-              Rutas pendientes de iniciar
+              Cargas pendientes
             </Text>
 
             <Text style={styles.resumenSubtitulo}>
-              Rutas por iniciar
+              Asignaciones por confirmar
             </Text>
           </View>
 
@@ -561,13 +553,13 @@ function CargasRepartidor({ navigation }) {
             </Text>
 
             <Text style={styles.vacioTitulo}>
-              No tienes rutas pendientes de iniciar
+              No tienes cargas pendientes
             </Text>
 
             <Text style={styles.vacioTexto}>
               Cuando el encargado registre una
-              ruta para ti, aparecerá aquí para
-              que puedas iniciarla.
+              carga para ti, aparecerá aquí para
+              que puedas confirmarla.
             </Text>
 
             <TouchableOpacity
@@ -723,7 +715,7 @@ function CargasRepartidor({ navigation }) {
                   </Text>
 
                   <Text style={styles.avisoTexto}>
-                    Confirma la ruta únicamente
+                    Confirma la carga únicamente
                     después de verificar físicamente
                     la cantidad recibida.
                   </Text>
@@ -756,14 +748,14 @@ function CargasRepartidor({ navigation }) {
                       />
 
                       <Text style={styles.aceptarTexto}>
-                        Iniciando...
+                        Confirmando...
                       </Text>
                     </>
 
                   ) : (
 
                     <Text style={styles.aceptarTexto}>
-                      ✅ Iniciar ruta
+                      ✅ Aceptar carga
                     </Text>
 
                   )}
@@ -810,7 +802,7 @@ const styles = StyleSheet.create({
 
   contenedor: {
     flex: 1,
-    backgroundColor: "#0e1115",
+    backgroundColor: "#f5f1ea",
   },
 
   // ================================================
@@ -823,16 +815,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 15,
-    backgroundColor: "#101319",
-    borderBottomWidth: 1,
-    borderBottomColor: "#2D3B4E",
+    backgroundColor: "#7a4e39",
   },
 
   iconoHeaderContainer: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "rgba(255,153,0,0.15)",
+    backgroundColor: "rgba(255,255,255,0.18)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -853,7 +843,7 @@ const styles = StyleSheet.create({
   },
 
   subtitulo: {
-    color: "#8D9DB6",
+    color: "#f5f1ea",
     fontSize: 13,
     marginTop: 2,
   },
@@ -863,13 +853,11 @@ const styles = StyleSheet.create({
   // ================================================
 
   perfilCard: {
-    backgroundColor: "#171c24",
+    backgroundColor: "#ffffff",
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 18,
     padding: 16,
-    borderWidth: 1,
-    borderColor: "#2D3B4E",
     elevation: 3,
     shadowColor: "#000",
     shadowOpacity: 0.08,
@@ -889,7 +877,7 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: "#005E9E",
+    backgroundColor: "#7a4e39",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -908,13 +896,13 @@ const styles = StyleSheet.create({
   perfilNombre: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#ffffff",
+    color: "#363f37",
   },
 
   perfilRol: {
     marginTop: 2,
     fontSize: 12,
-    color: "#FF9900",
+    color: "#7a4e39",
     fontWeight: "700",
     textTransform: "uppercase",
   },
@@ -922,11 +910,11 @@ const styles = StyleSheet.create({
   perfilEmail: {
     marginTop: 4,
     fontSize: 12,
-    color: "#8D9DB6",
+    color: "#666666",
   },
 
   logoutButton: {
-    backgroundColor: "#1A2332",
+    backgroundColor: "#f5f1ea",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -934,7 +922,7 @@ const styles = StyleSheet.create({
   },
 
   logoutButtonText: {
-    color: "#FF9900",
+    color: "#7a4e39",
     fontWeight: "700",
     fontSize: 11,
   },
@@ -948,7 +936,7 @@ const styles = StyleSheet.create({
 
   resumenMiniCard: {
     flex: 1,
-    backgroundColor: "#1A2332",
+    backgroundColor: "#f8f4ec",
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: "center",
@@ -958,33 +946,33 @@ const styles = StyleSheet.create({
   resumenMiniNumero: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#FF9900",
+    color: "#7a4e39",
   },
 
   resumenMiniLabel: {
     marginTop: 3,
     fontSize: 11,
-    color: "#8D9DB6",
+    color: "#666666",
     fontWeight: "600",
   },
 
   bienvenida: {
-    backgroundColor: "#101319",
+    backgroundColor: "#ffffff",
     paddingHorizontal: 20,
     paddingVertical: 18,
     borderBottomWidth: 1,
-    borderBottomColor: "#2D3B4E",
+    borderBottomColor: "#e5e0d8",
   },
 
   bienvenidaTitulo: {
     fontSize: 19,
     fontWeight: "700",
-    color: "#ffffff",
+    color: "#363f37",
   },
 
   bienvenidaTexto: {
     marginTop: 5,
-    color: "#8D9DB6",
+    color: "#666666",
     fontSize: 14,
     lineHeight: 20,
   },
@@ -1003,15 +991,13 @@ const styles = StyleSheet.create({
   // ================================================
 
   resumenCard: {
-    backgroundColor: "#171c24",
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 18,
     marginBottom: 15,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: "#2D3B4E",
     elevation: 2,
     shadowColor: "#000",
     shadowOpacity: 0.08,
@@ -1025,26 +1011,26 @@ const styles = StyleSheet.create({
   resumenTitulo: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#ffffff",
+    color: "#363f37",
   },
 
   resumenSubtitulo: {
     marginTop: 3,
     fontSize: 12,
-    color: "#8D9DB6",
+    color: "#777777",
   },
 
   contador: {
     width: 45,
     height: 45,
     borderRadius: 23,
-    backgroundColor: "#FF9900",
+    backgroundColor: "#7a4e39",
     alignItems: "center",
     justifyContent: "center",
   },
 
   contadorTexto: {
-    color: "#101319",
+    color: "#ffffff",
     fontSize: 19,
     fontWeight: "700",
   },
@@ -1054,12 +1040,10 @@ const styles = StyleSheet.create({
   // ================================================
 
   cargaCard: {
-    backgroundColor: "#171c24",
+    backgroundColor: "#ffffff",
     borderRadius: 14,
     padding: 18,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#2D3B4E",
     elevation: 3,
     shadowColor: "#000",
     shadowOpacity: 0.09,
@@ -1079,44 +1063,44 @@ const styles = StyleSheet.create({
   cargaTitulo: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#ffffff",
+    color: "#363f37",
   },
 
   cargaFecha: {
     marginTop: 4,
     fontSize: 12,
-    color: "#8D9DB6",
+    color: "#777777",
   },
 
   estadoPendiente: {
-    backgroundColor: "rgba(255,153,0,0.15)",
+    backgroundColor: "#fff3cd",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
   },
 
   estadoPendienteTexto: {
-    color: "#FF9900",
+    color: "#856404",
     fontSize: 10,
     fontWeight: "700",
   },
 
   estadoTransito: {
-    backgroundColor: "rgba(34,197,94,0.15)",
+    backgroundColor: "#e8f5e9",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
   },
 
   estadoTransitoTexto: {
-    color: "#4ADE80",
+    color: "#2e7d32",
     fontSize: 10,
     fontWeight: "700",
   },
 
   separador: {
     height: 1,
-    backgroundColor: "#2D3B4E",
+    backgroundColor: "#eeeeee",
     marginVertical: 15,
   },
 
@@ -1137,7 +1121,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#1A2332",
+    backgroundColor: "#f5f1ea",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1149,19 +1133,19 @@ const styles = StyleSheet.create({
 
   datoEtiqueta: {
     fontSize: 11,
-    color: "#8D9DB6",
+    color: "#888888",
     marginBottom: 2,
   },
 
   datoValor: {
     fontSize: 15,
-    color: "#D4E5F5",
+    color: "#363f37",
     fontWeight: "600",
   },
 
   cantidadValor: {
     fontSize: 18,
-    color: "#FF9900",
+    color: "#7a4e39",
     fontWeight: "700",
   },
 
@@ -1172,7 +1156,7 @@ const styles = StyleSheet.create({
   avisoCard: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: "#1A2332",
+    backgroundColor: "#f8f4ec",
     borderRadius: 9,
     padding: 12,
     marginTop: 18,
@@ -1187,7 +1171,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 8,
     fontSize: 12,
-    color: "#8D9DB6",
+    color: "#666666",
     lineHeight: 18,
   },
 
@@ -1196,7 +1180,7 @@ const styles = StyleSheet.create({
   // ================================================
 
   aceptarBoton: {
-    backgroundColor: "#FF9900",
+    backgroundColor: "#536d5f",
     borderRadius: 9,
     paddingVertical: 14,
     alignItems: "center",
@@ -1205,7 +1189,7 @@ const styles = StyleSheet.create({
   },
 
   aceptarTexto: {
-    color: "#101319",
+    color: "#ffffff",
     fontSize: 15,
     fontWeight: "700",
     marginLeft: 6,
@@ -1220,13 +1204,11 @@ const styles = StyleSheet.create({
   // ================================================
 
   vacioCard: {
-    backgroundColor: "#171c24",
+    backgroundColor: "#ffffff",
     borderRadius: 14,
     padding: 30,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#2D3B4E",
     elevation: 2,
     shadowColor: "#000",
     shadowOpacity: 0.07,
@@ -1245,28 +1227,28 @@ const styles = StyleSheet.create({
   vacioTitulo: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#ffffff",
+    color: "#363f37",
     textAlign: "center",
   },
 
   vacioTexto: {
     marginTop: 8,
     fontSize: 13,
-    color: "#8D9DB6",
+    color: "#777777",
     lineHeight: 19,
     textAlign: "center",
   },
 
   actualizarBoton: {
     marginTop: 18,
-    backgroundColor: "#FF9900",
+    backgroundColor: "#7a4e39",
     borderRadius: 8,
     paddingHorizontal: 20,
     paddingVertical: 11,
   },
 
   actualizarTexto: {
-    color: "#101319",
+    color: "#ffffff",
     fontWeight: "700",
   },
 
@@ -1278,9 +1260,9 @@ const styles = StyleSheet.create({
     margin: 16,
     padding: 16,
     borderRadius: 10,
-    backgroundColor: "rgba(239,68,68,0.12)",
+    backgroundColor: "#f8d7da",
     borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.4)",
+    borderColor: "#f5c6cb",
     flexDirection: "row",
   },
 
@@ -1294,13 +1276,13 @@ const styles = StyleSheet.create({
   },
 
   errorTitulo: {
-    color: "#FCA5A5",
+    color: "#721c24",
     fontSize: 15,
     fontWeight: "700",
   },
 
   errorTexto: {
-    color: "#FCA5A5",
+    color: "#721c24",
     fontSize: 13,
     marginTop: 4,
     lineHeight: 18,
@@ -1309,7 +1291,7 @@ const styles = StyleSheet.create({
   reintentarBoton: {
     alignSelf: "flex-start",
     marginTop: 10,
-    backgroundColor: "#EF4444",
+    backgroundColor: "#721c24",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 7,
@@ -1329,12 +1311,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0e1115",
+    backgroundColor: "#f5f1ea",
   },
 
   cargandoTexto: {
     marginTop: 12,
-    color: "#8D9DB6",
+    color: "#666666",
     fontSize: 14,
   },
 
@@ -1346,20 +1328,18 @@ const styles = StyleSheet.create({
     marginTop: 5,
     padding: 16,
     borderRadius: 10,
-    backgroundColor: "#171c24",
-    borderWidth: 1,
-    borderColor: "#2D3B4E",
+    backgroundColor: "#ffffff",
   },
 
   pieInfoTitulo: {
-    color: "#ffffff",
+    color: "#363f37",
     fontWeight: "700",
     fontSize: 14,
   },
 
   pieInfoTexto: {
     marginTop: 5,
-    color: "#8D9DB6",
+    color: "#777777",
     fontSize: 12,
     lineHeight: 18,
   },

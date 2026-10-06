@@ -4,6 +4,7 @@ import {
   Alert,
   Modal,
   RefreshControl,
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +13,23 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+
+const abrirMapa = (direccion) => {
+  if (!direccion) {
+    Alert.alert(
+      'Sin dirección',
+      'Este pedido no tiene una dirección registrada.'
+    );
+    return;
+  }
+
+  const url =
+    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      direccion
+    )}`;
+
+  Linking.openURL(url);
+};
 
 import api from '../config/api';
 import { useAuth } from '../context/AuthContext';
@@ -321,7 +339,18 @@ export default function PedidosScreen() {
               <TouchableOpacity
                 style={styles.primaryButton}
                 onPress={() => abrirConfirmacion(pedido)}
+
+
               >
+
+              <TouchableOpacity
+  style={styles.secondaryButton}
+  onPress={() => abrirMapa(pedido.direccion)}
+>
+  <Text style={styles.secondaryButtonText}>
+    📍 Navegar
+  </Text>
+</TouchableOpacity>
                 <Text style={styles.primaryButtonText}>✅ Confirmar entrega</Text>
               </TouchableOpacity>
 
