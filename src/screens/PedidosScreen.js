@@ -1,4 +1,4 @@
-// HU-014: Botón Navegar en pedido
+// historia HU-014: Botón Navegar en pedido
 // Objetivo: Permitir al repartidor abrir la dirección en Google Maps/Waze
 // desde la tarjeta del pedido, evitando copiar manualmente la dirección.
 
