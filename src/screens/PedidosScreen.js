@@ -2,7 +2,7 @@
 // HU-013: Lista interactiva de pedidos
 // Objetivo: Mostrar pedidos agrupados por estado (Pendiente, En Ruta, Entregado, Cancelado)
 // y permitir asignarlos a repartidores en tiempo real.
-=======
+
 // HU-014: Botón Navegar en pedido
 // Objetivo: Permitir al repartidor abrir la dirección en Google Maps/Waze
 // desde la tarjeta del pedido, evitando copiar manualmente la dirección.
