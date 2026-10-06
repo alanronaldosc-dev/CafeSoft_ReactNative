@@ -1,32 +1,63 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+} from 'react-native';
+
 import colors from '../theme/colors';
 
 export default function ActionsScreen({ navigation }) {
   return (
     <View style={styles.container}>
+
+      {/* ============================================
+          ENCABEZADO
+      ============================================ */}
+
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Acciones</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.sectionTitle}>Gestión de Inventario</Text>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
 
-        {/* Insumos */}
+        <Text style={styles.sectionTitle}>
+          Gestión de Inventario
+        </Text>
+
+        {/* ============================================
+            INSUMOS
+        ============================================ */}
+
         <View style={styles.card}>
+
           <View style={styles.cardHeader}>
+
             <View style={styles.cardIconContainer}>
               <Text style={styles.cardIcon}>🧂</Text>
             </View>
-            <View>
-              <Text style={styles.cardTitle}>Insumos</Text>
-              <Text style={styles.cardSub}>Catálogo de materias primas</Text>
+
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>
+                Insumos
+              </Text>
+
+              <Text style={styles.cardSub}>
+                Catálogo de materias primas
+              </Text>
             </View>
+
           </View>
 
           <TouchableOpacity
             style={styles.cardButton}
             onPress={() => navigation.navigate('InsumosList')}
+            activeOpacity={0.8}
           >
             <Text style={styles.cardButtonText}>
               Ver Lista de Insumos →
@@ -34,10 +65,16 @@ export default function ActionsScreen({ navigation }) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.cardButton, styles.cardButtonSecondary]}
+            style={[
+              styles.cardButton,
+              styles.cardButtonSecondary,
+            ]}
             onPress={() =>
-              navigation.navigate('InsumoForm', { insumo: null })
+              navigation.navigate('InsumoForm', {
+                insumo: null,
+              })
             }
+            activeOpacity={0.8}
           >
             <Text
               style={[
@@ -48,25 +85,37 @@ export default function ActionsScreen({ navigation }) {
               + Registrar Nuevo Insumo
             </Text>
           </TouchableOpacity>
+
         </View>
 
-        {/* Inventario (Lotes) */}
+        {/* ============================================
+            INVENTARIO / LOTES
+        ============================================ */}
+
         <View style={styles.card}>
+
           <View style={styles.cardHeader}>
+
             <View style={styles.cardIconContainer}>
               <Text style={styles.cardIcon}>📦</Text>
             </View>
-            <View>
-              <Text style={styles.cardTitle}>Inventario</Text>
+
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>
+                Inventario
+              </Text>
+
               <Text style={styles.cardSub}>
                 Registro de lotes de insumos
               </Text>
             </View>
+
           </View>
 
           <TouchableOpacity
             style={styles.cardButton}
             onPress={() => navigation.navigate('LotesList')}
+            activeOpacity={0.8}
           >
             <Text style={styles.cardButtonText}>
               Ver Lista de Inventario →
@@ -74,8 +123,12 @@ export default function ActionsScreen({ navigation }) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.cardButton, styles.cardButtonSecondary]}
+            style={[
+              styles.cardButton,
+              styles.cardButtonSecondary,
+            ]}
             onPress={() => navigation.navigate('LoteForm')}
+            activeOpacity={0.8}
           >
             <Text
               style={[
@@ -86,25 +139,37 @@ export default function ActionsScreen({ navigation }) {
               + Agregar Insumo a Inventario
             </Text>
           </TouchableOpacity>
+
         </View>
 
-        {/* Productos */}
+        {/* ============================================
+            PRODUCTOS
+        ============================================ */}
+
         <View style={styles.card}>
+
           <View style={styles.cardHeader}>
+
             <View style={styles.cardIconContainer}>
               <Text style={styles.cardIcon}>☕</Text>
             </View>
-            <View>
-              <Text style={styles.cardTitle}>Productos</Text>
+
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>
+                Productos
+              </Text>
+
               <Text style={styles.cardSub}>
                 Catálogo de productos del menú
               </Text>
             </View>
+
           </View>
 
           <TouchableOpacity
             style={styles.cardButton}
             onPress={() => navigation.navigate('ProductosList')}
+            activeOpacity={0.8}
           >
             <Text style={styles.cardButtonText}>
               Ver Lista de Productos →
@@ -112,10 +177,16 @@ export default function ActionsScreen({ navigation }) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.cardButton, styles.cardButtonSecondary]}
+            style={[
+              styles.cardButton,
+              styles.cardButtonSecondary,
+            ]}
             onPress={() =>
-              navigation.navigate('ProductoForm', { producto: null })
+              navigation.navigate('ProductoForm', {
+                producto: null,
+              })
             }
+            activeOpacity={0.8}
           >
             <Text
               style={[
@@ -126,25 +197,37 @@ export default function ActionsScreen({ navigation }) {
               + Crear Nuevo Producto
             </Text>
           </TouchableOpacity>
+
         </View>
 
-        {/* Categorías */}
+        {/* ============================================
+            CATEGORÍAS
+        ============================================ */}
+
         <View style={styles.card}>
+
           <View style={styles.cardHeader}>
+
             <View style={styles.cardIconContainer}>
               <Text style={styles.cardIcon}>🏷️</Text>
             </View>
-            <View>
-              <Text style={styles.cardTitle}>Categorías</Text>
+
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>
+                Categorías
+              </Text>
+
               <Text style={styles.cardSub}>
                 Organiza los productos del menú
               </Text>
             </View>
+
           </View>
 
           <TouchableOpacity
             style={styles.cardButton}
             onPress={() => navigation.navigate('CategoriasList')}
+            activeOpacity={0.8}
           >
             <Text style={styles.cardButtonText}>
               Ver Lista de Categorías →
@@ -152,10 +235,16 @@ export default function ActionsScreen({ navigation }) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.cardButton, styles.cardButtonSecondary]}
+            style={[
+              styles.cardButton,
+              styles.cardButtonSecondary,
+            ]}
             onPress={() =>
-              navigation.navigate('CategoriaForm', { categoria: null })
+              navigation.navigate('CategoriaForm', {
+                categoria: null,
+              })
             }
+            activeOpacity={0.8}
           >
             <Text
               style={[
@@ -166,29 +255,39 @@ export default function ActionsScreen({ navigation }) {
               + Nueva Categoría
             </Text>
           </TouchableOpacity>
+
         </View>
 
-        {/* ============================================ */}
-        {/* HU-013 - PROVEEDORES */}
-        {/* ============================================ */}
+        {/* ============================================
+            HU-013 - PROVEEDORES
+        ============================================ */}
 
         <View style={styles.card}>
+
           <View style={styles.cardHeader}>
+
             <View style={styles.cardIconContainer}>
               <Text style={styles.cardIcon}>🚚</Text>
             </View>
 
-            <View>
-              <Text style={styles.cardTitle}>Proveedores</Text>
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>
+                Proveedores
+              </Text>
+
               <Text style={styles.cardSub}>
                 Gestión y catálogo de proveedores
               </Text>
             </View>
+
           </View>
 
           <TouchableOpacity
             style={styles.cardButton}
-            onPress={() => navigation.navigate('ProveedoresList')}
+            onPress={() =>
+              navigation.navigate('ProveedoresList')
+            }
+            activeOpacity={0.8}
           >
             <Text style={styles.cardButtonText}>
               Ver Lista de Proveedores →
@@ -196,8 +295,14 @@ export default function ActionsScreen({ navigation }) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.cardButton, styles.cardButtonSecondary]}
-            onPress={() => navigation.navigate('ProveedorForm')}
+            style={[
+              styles.cardButton,
+              styles.cardButtonSecondary,
+            ]}
+            onPress={() =>
+              navigation.navigate('ProveedorForm')
+            }
+            activeOpacity={0.8}
           >
             <Text
               style={[
@@ -208,6 +313,58 @@ export default function ActionsScreen({ navigation }) {
               + Registrar Nuevo Proveedor
             </Text>
           </TouchableOpacity>
+
+        </View>
+
+        {/* ============================================
+            HU-006 - CARGAS DEL REPARTIDOR
+        ============================================ */}
+
+        <View style={styles.card}>
+
+          <View style={styles.cardHeader}>
+
+            <View style={styles.cardIconContainer}>
+              <Text style={styles.cardIcon}>🚰</Text>
+            </View>
+
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardTitle}>
+                Mis cargas
+              </Text>
+
+              <Text style={styles.cardSub}>
+                Confirma los garrafones asignados
+              </Text>
+            </View>
+
+          </View>
+
+          <View style={styles.huInfo}>
+
+            <Text style={styles.huInfoIcon}>
+              📋
+            </Text>
+
+            <Text style={styles.huInfoText}>
+              Revisa la cantidad de garrafones
+              asignados antes de iniciar tu ruta.
+            </Text>
+
+          </View>
+
+          <TouchableOpacity
+            style={styles.cargaButton}
+            onPress={() =>
+              navigation.navigate('CargasRepartidor')
+            }
+            activeOpacity={0.8}
+          >
+            <Text style={styles.cargaButtonText}>
+              🚚 Ver mis cargas →
+            </Text>
+          </TouchableOpacity>
+
         </View>
 
       </ScrollView>
@@ -215,11 +372,20 @@ export default function ActionsScreen({ navigation }) {
   );
 }
 
+// ==================================================
+// ESTILOS
+// ==================================================
+
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
+
+  // ================================================
+  // HEADER
+  // ================================================
 
   header: {
     backgroundColor: colors.primary,
@@ -234,10 +400,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 
+  // ================================================
+  // SCROLL
+  // ================================================
+
   scroll: {
     padding: 20,
     paddingBottom: 40,
   },
+
+  // ================================================
+  // SECCIÓN
+  // ================================================
 
   sectionTitle: {
     fontSize: 12,
@@ -247,6 +421,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
+
+  // ================================================
+  // CARD
+  // ================================================
 
   card: {
     backgroundColor: colors.surface,
@@ -260,8 +438,12 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     marginBottom: 16,
+  },
+
+  cardHeaderText: {
+    flex: 1,
+    marginLeft: 12,
   },
 
   cardIconContainer: {
@@ -289,6 +471,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
+  // ================================================
+  // BOTONES GENERALES
+  // ================================================
+
   cardButton: {
     backgroundColor: colors.primary,
     borderRadius: 12,
@@ -312,4 +498,45 @@ const styles = StyleSheet.create({
   cardButtonTextSecondary: {
     color: colors.secondary,
   },
+
+  // ================================================
+  // HU-006
+  // ================================================
+
+  huInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+  },
+
+  huInfoIcon: {
+    fontSize: 17,
+    marginRight: 8,
+  },
+
+  huInfoText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.textSecondary,
+  },
+
+  cargaButton: {
+    backgroundColor: colors.secondary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  cargaButtonText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
 });

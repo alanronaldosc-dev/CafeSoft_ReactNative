@@ -14,7 +14,7 @@ import CategoriaService from '../services/CategoriaService';
 
 const IVA = 0.16;
 const USUARIO_ID = 1;
-const BASE_URL = 'http://192.168.100.6:8080/api';
+import { BASE_URL } from '../config/api';
 
 export default function CartScreen() {
   const { cartItems, addToCart, removeFromCart, deleteFromCart, totalItems, totalPrice } = useCart();

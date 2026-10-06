@@ -66,13 +66,9 @@ function CargasRepartidor({ navigation }) {
   const emailUsuario = usuario?.email || usuario?.correo || "sin-email@cafesoft.com";
   const rolUsuario = usuario?.rol || usuario?.role || "Repartidor";
 
-  const handleLogout = () => {
-    cerrarSesion();
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "Login" }],
-    });
-  };
+const handleLogout = async () => {
+  await cerrarSesion();
+};
 
   // ============================================
   // CARGAR CARGAS PENDIENTES

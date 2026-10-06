@@ -1,10 +1,10 @@
 // App.js
-// Ahora envuelve toda la app con CartProvider y AuthProvider,
+// Ahora envuelve toda la app con CartProvider,
 // igual que en Laravel envolvés rutas con middleware.
 
 import React from 'react';
-import { CartProvider } from './src/context/CartContext';
 import { AuthProvider } from './src/context/AuthContext';
+import { CartProvider } from './src/context/CartContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {

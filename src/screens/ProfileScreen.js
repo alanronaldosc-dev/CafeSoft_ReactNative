@@ -21,17 +21,10 @@ import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAuth } from '../context/AuthContext';
 import colors from '../theme/colors';
 
-/**
- * HU-011: datos del perfil activo del usuario.
- * En producción vendrán del AuthContext o de la API (GET /usuarios/:id).
- * Contiene los campos básicos que el criterio de aceptación exige:
- * nombre, rol y datos operativos (pedidos, puntos, reseñas).
- */
 const USER = {
-  name: 'María García',
-  role: 'Cliente',
   since: '2023',
   orders: 24,
   points: 340,
@@ -41,22 +34,18 @@ const USER = {
 const TEXT_SIZES = ['Pequeño', 'Mediano', 'Grande'];
 
 export default function ProfileScreen({ navigation }) {
-  // Estado de accesibilidad (no relacionado con HU-011, son ajustes de UI)
+  const { usuario, cerrarSesion } = useAuth();
   const [highContrast, setHighContrast] = useState(false);
   const [textSize, setTextSize] = useState('Mediano');
   const [accessibilityOpen, setAccessibilityOpen] = useState(false);
 
-  /**
-   * HU-011 – Cerrar sesión del perfil activo
-   * Termina la sesión del usuario y regresa a la pantalla de Login,
-   * sin eliminar el perfil del sistema.
-   */
-  const handleLogout = () => {
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Login' }],
-    });
-  };
+  const nombreUsuario = usuario?.nombre || usuario?.name || 'Usuario';
+  const rolUsuario = usuario?.rol || usuario?.role || 'Cliente';
+  const emailUsuario = usuario?.email || usuario?.correo || 'sin-email@correo.com';
+
+ const handleLogout = async () => {
+  await cerrarSesion();
+};
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
@@ -67,17 +56,18 @@ export default function ProfileScreen({ navigation }) {
         <View style={[styles.headerCircle, styles.headerCircle2]} />
         <View style={styles.avatarContainer}>
           <Text style={styles.avatarText}>
-            {USER.name.charAt(0)}
+            {nombreUsuario.charAt(0).toUpperCase()}
           </Text>
         </View>
         <View style={styles.userInfo}>
-          <Text style={styles.userName}>{USER.name}</Text>
+          <Text style={styles.userName}>{nombreUsuario}</Text>
           <View style={styles.roleRow}>
             <View style={styles.roleBadge}>
-              <Text style={styles.roleText}>{USER.role}</Text>
+              <Text style={styles.roleText}>{rolUsuario}</Text>
             </View>
             <Text style={styles.sinceText}>desde {USER.since}</Text>
           </View>
+          <Text style={styles.userEmail}>{emailUsuario}</Text>
         </View>
       </LinearGradient>
 
@@ -218,7 +208,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    paddingBottom: 40,
+    paddingBottom: 30,
   },
   header: {
     flexDirection: 'row', alignItems: 'center',
@@ -249,6 +239,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.textLight,
     marginBottom: 6,
+  },
+  userEmail: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.82)',
+    marginTop: 6,
   },
   roleRow: {
     flexDirection: 'row',

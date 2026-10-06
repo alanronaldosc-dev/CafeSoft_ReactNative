@@ -1,9 +1,10 @@
 // ============================================
-// HU-008 - INICIO DE SESION MOVIL
-// Actividad 07 - Implementacion de seguridad
+// HU-008 - INICIO DE SESIÓN MÓVIL
+// Actividad 07 - Implementación de seguridad
 // ============================================
 
 import React, { useState } from 'react';
+
 import {
   View,
   Text,
@@ -11,17 +12,19 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Dimensions,
   Alert,
   ActivityIndicator,
 } from 'react-native';
 
 import { LinearGradient } from 'expo-linear-gradient';
+
 import api from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import colors from '../theme/colors';
 
-const { width, height } = Dimensions.get('window');
+// ============================================
+// ROLES
+// ============================================
 
 const ROLES = [
   'Cliente',
@@ -30,35 +33,64 @@ const ROLES = [
   'Repartidor',
 ];
 
-const LOGIN_ENDPOINTS = [
-  '/auth/login',
-  '/usuarios/login',
-  '/login',
-];
+// ============================================
+// CONVERTIR userTipo A ROL
+// ============================================
 
-const normalizeRole = (value = '') =>
-  String(value)
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+const obtenerRolPorTipo = (userTipo) => {
+  const tipo = Number(userTipo);
+
+  switch (tipo) {
+    case 0:
+      return 'Administrador';
+
+    case 1:
+      return 'Empleado';
+
+    case 2:
+      return 'Cliente';
+
+    case 4:
+      return 'Repartidor';
+
+    default:
+      return null;
+  }
+};
+
+// ============================================
+// LOGIN
+// ============================================
 
 export default function LoginScreen({ navigation }) {
-
   const { iniciarSesion } = useAuth();
 
-  const [selectedRole, setSelectedRole] = useState('Cliente');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [selectedRole, setSelectedRole] =
+    useState('Cliente');
+
+  const [email, setEmail] =
+    useState('');
+
+  const [password, setPassword] =
+    useState('');
+
+  const [showPassword, setShowPassword] =
+    useState(false);
+
+  const [showRoleDropdown, setShowRoleDropdown] =
+    useState(false);
+
+  const [loading, setLoading] =
+    useState(false);
 
   // ============================================
-  // OBTENER USUARIO DE LA RESPUESTA DE LA API
+  // OBTENER USUARIO DESDE LA RESPUESTA
   // ============================================
 
-  const getUserFromResponse = (responseData, fallbackEmail) => {
-
+  const obtenerUsuario = (
+    responseData,
+    fallbackEmail
+  ) => {
     const source =
       responseData?.usuario ??
       responseData?.user ??
@@ -66,36 +98,23 @@ export default function LoginScreen({ navigation }) {
       responseData?.data?.user ??
       responseData?.data ??
       responseData?.result ??
-      responseData ??
       {};
 
     const usuario = Array.isArray(source)
       ? source[0]
       : source;
 
-    if (!usuario && typeof responseData === 'object') {
-      return {
-        id:
-          responseData.id ??
-          responseData.idUsuario ??
-          responseData.userId,
+    const userTipo =
+      usuario?.userTipo ??
+      usuario?.tipoUsuario ??
+      responseData?.userTipo ??
+      responseData?.tipoUsuario;
 
-        nombre:
-          responseData.nombre ??
-          responseData.name ??
-          'Usuario',
-
-        email:
-          responseData.email ??
-          responseData.correo ??
-          fallbackEmail,
-
-        rol:
-          responseData.rol ??
-          responseData.role ??
-          selectedRole,
-      };
-    }
+    const rolBackend =
+      usuario?.rol ??
+      usuario?.role ??
+      usuario?.tipoRol ??
+      obtenerRolPorTipo(userTipo);
 
     return {
       ...usuario,
@@ -118,71 +137,35 @@ export default function LoginScreen({ navigation }) {
         usuario?.correo ??
         fallbackEmail,
 
+      userTipo,
+
+      // El rol del servidor tiene prioridad.
+      // Nunca damos permisos únicamente porque
+      // el usuario eligió un rol en la pantalla.
       rol:
-        usuario?.rol ??
-        usuario?.role ??
-        usuario?.tipoUsuario ??
-        usuario?.tipoRol ??
+        rolBackend ??
         selectedRole,
     };
   };
 
   // ============================================
-  // CONSTRUIR DATOS PARA LA API
-  // ============================================
-
-  const buildPayloads = () => {
-
-    const base = [
-      {
-        email: email.trim(),
-        password: password.trim(),
-      },
-      {
-        email: email.trim(),
-        contrasena: password.trim(),
-      },
-      {
-        correo: email.trim(),
-        password: password.trim(),
-      },
-      {
-        correo: email.trim(),
-        contrasena: password.trim(),
-      },
-      {
-        username: email.trim(),
-        password: password.trim(),
-      },
-    ];
-
-    return base.filter(
-      (payload, index, array) =>
-        JSON.stringify(payload) !== '{}' &&
-        array.findIndex(
-          (item) =>
-            JSON.stringify(item) ===
-            JSON.stringify(payload)
-        ) === index
-    );
-  };
-
-  // ============================================
-  // INICIO DE SESION
+  // INICIAR SESIÓN
   // ============================================
 
   const handleLogin = async () => {
+    const trimmedEmail =
+      email.trim().toLowerCase();
 
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
+    // No usamos trim() en la contraseña porque
+    // los espacios pueden formar parte de ella.
+    const passwordValue = password;
 
     // ==========================================
     // SEGURIDAD 1
-    // VALIDACION DE ENTRADAS
+    // VALIDACIÓN DE ENTRADAS
     // ==========================================
 
-    // No permitir campos vacíos
-    if (!trimmedEmail || !trimmedPassword) {
+    if (!trimmedEmail || !passwordValue) {
       Alert.alert(
         'Datos incompletos',
         'El correo y la contraseña son obligatorios.'
@@ -191,12 +174,10 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
-    // Validar formato del correo
     const emailRegex =
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(trimmedEmail)) {
-
       Alert.alert(
         'Correo inválido',
         'Ingresa un correo electrónico válido.'
@@ -205,9 +186,7 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
-    // Validar longitud mínima de contraseña
-    if (trimmedPassword.length < 8) {
-
+    if (passwordValue.length < 8) {
       Alert.alert(
         'Contraseña inválida',
         'La contraseña debe contener al menos 8 caracteres.'
@@ -216,145 +195,172 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
-    // Si las validaciones fueron correctas
-    // se permite realizar la petición a la API
-
     setLoading(true);
 
-    let lastError = null;
-
     try {
+      // ==========================================
+      // UNA SOLA PETICIÓN DE LOGIN
+      // ==========================================
+      //
+      // Esto es importante para el bloqueo
+      // temporal por intentos fallidos.
+      //
+      // Cada toque en "Iniciar Sesión"
+      // representa únicamente un intento.
+      // ==========================================
 
-      const payloads = buildPayloads();
-
-      for (const endpoint of LOGIN_ENDPOINTS) {
-
-        for (const payload of payloads) {
-
-          try {
-
-            const response =
-              await api.post(endpoint, payload);
-
-            const usuario =
-              getUserFromResponse(
-                response.data,
-                trimmedEmail
-              );
-
-            if (
-              !usuario ||
-              (
-                !usuario.id &&
-                !usuario.email &&
-                !usuario.nombre
-              )
-            ) {
-              continue;
-            }
-
-            const roleName =
-              usuario.rol ??
-              usuario.role ??
-              selectedRole;
-
-            const normalized =
-              normalizeRole(roleName);
-
-            const destino =
-              normalized.includes('repart')
-                ? 'RepartidorHome'
-                : 'Main';
-
-            iniciarSesion({
-              ...usuario,
-
-              nombre:
-                usuario.nombre ??
-                'Usuario',
-
-              email:
-                usuario.email ??
-                trimmedEmail,
-
-              rol:
-                roleName ??
-                selectedRole,
-            });
-
-            navigation.reset({
-              index: 0,
-              routes: [
-                {
-                  name: destino,
-                },
-              ],
-            });
-
-            return;
-
-          } catch (error) {
-
-            lastError = error;
-
-          }
+      const response = await api.post(
+        '/usuarios/login',
+        {
+          email: trimmedEmail,
+          password: passwordValue,
         }
+      );
+
+      // ==========================================
+      // VALIDAR RESPUESTA
+      // ==========================================
+
+      const usuario = obtenerUsuario(
+        response.data,
+        trimmedEmail
+      );
+
+      if (
+        !usuario?.id &&
+        !usuario?.email
+      ) {
+        Alert.alert(
+          'Error',
+          'No fue posible obtener la información del usuario.'
+        );
+
+        return;
       }
+
+      // ==========================================
+      // OBTENER JWT
+      // ==========================================
+
+      const token =
+        response.data?.token ??
+        response.data?.data?.token ??
+        null;
+
+      if (!token) {
+        Alert.alert(
+          'Error de seguridad',
+          'El servidor no proporcionó un token de acceso.'
+        );
+
+        return;
+      }
+
+      // ==========================================
+      // GUARDAR SESIÓN
+      // ==========================================
+
+      await iniciarSesion(
+        usuario,
+        token
+      );
+
+      /*
+       * IMPORTANTE:
+       *
+       * Ya NO usamos:
+       *
+       * navigation.reset(...)
+       *
+       * AppNavigator detecta que existe un usuario
+       * autenticado y automáticamente muestra:
+       *
+       * Repartidor -> RepartidorHome
+       * Otros      -> Main
+       */
+
+    } catch (error) {
+      const status =
+        error?.response?.status;
 
       // ==========================================
       // SEGURIDAD 2
       // MANEJO SEGURO DE ERRORES
       // ==========================================
 
-      /*
-        No mostramos directamente los errores
-        internos enviados por el servidor.
+      if (status === 429) {
+        Alert.alert(
+          '🔒 Cuenta bloqueada',
+          'Has realizado demasiados intentos fallidos. Intenta nuevamente más tarde.'
+        );
 
-        Esto evita mostrar información sensible
-        o detalles internos de la API.
-      */
+        return;
+      }
 
-      if (lastError?.response?.status === 401) {
-
+      if (status === 401) {
         Alert.alert(
           'Acceso denegado',
           'Correo o contraseña incorrectos.'
         );
 
-      } else if (
-        lastError?.response?.status === 400
-      ) {
+        return;
+      }
 
+      if (status === 403) {
+        Alert.alert(
+          'Acceso no autorizado',
+          'Tu usuario no tiene permiso para realizar esta operación.'
+        );
+
+        return;
+      }
+
+      if (status === 400) {
         Alert.alert(
           'Datos inválidos',
           'Verifica la información ingresada.'
         );
 
-      } else {
-
-        Alert.alert(
-          'Error de inicio de sesión',
-          'No fue posible iniciar sesión. Intenta nuevamente.'
-        );
+        return;
       }
 
-    } catch (error) {
+      if (status >= 500) {
+        Alert.alert(
+          'Error del servidor',
+          'Ocurrió un problema en el servidor. Intenta nuevamente.'
+        );
 
-      /*
-        Mensaje genérico.
-        No mostramos error.message al usuario.
-      */
+        return;
+      }
+
+      if (!error?.response) {
+        Alert.alert(
+          'Error de conexión',
+          'No fue posible conectarse con el servidor. Verifica tu conexión y que la API esté encendida.'
+        );
+
+        return;
+      }
 
       Alert.alert(
-        'Error',
-        'Ocurrió un problema al iniciar sesión. Intenta nuevamente.'
+        'Error de inicio de sesión',
+        'No fue posible iniciar sesión. Intenta nuevamente.'
       );
 
     } finally {
-
       setLoading(false);
-
     }
+  };
+
+  // ============================================
+  // RECUPERAR CONTRASEÑA
+  // ============================================
+
+  const handleForgotPassword = () => {
+    Alert.alert(
+      'Recuperar contraseña',
+      'La recuperación de contraseña aún no está disponible.'
+    );
   };
 
   // ============================================
@@ -362,11 +368,7 @@ export default function LoginScreen({ navigation }) {
   // ============================================
 
   return (
-
     <View style={styles.container}>
-
-      {/* Fondo */}
-
       <LinearGradient
         colors={[
           '#3D1A00',
@@ -378,7 +380,7 @@ export default function LoginScreen({ navigation }) {
         end={{ x: 1, y: 1 }}
       />
 
-      {/* Círculos decorativos */}
+      {/* CÍRCULOS DECORATIVOS */}
 
       <View
         style={[
@@ -404,12 +406,11 @@ export default function LoginScreen({ navigation }) {
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-
-        {/* Parte superior */}
+        {/* ENCABEZADO */}
 
         <View style={styles.illustrationSection}>
-
           <View style={styles.illustrationMain}>
             <Text style={styles.illustrationEmoji}>
               ☕
@@ -456,19 +457,17 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.appTagline}>
             Tu café favorito, donde quieras
           </Text>
-
         </View>
 
         {/* FORMULARIO */}
 
         <View style={styles.formCard}>
-
           <Text style={styles.title}>
             Bienvenido de nuevo
           </Text>
 
           <Text style={styles.subtitle}>
-            Iniciá sesión para continuar
+            Inicia sesión para continuar
           </Text>
 
           {/* ROL */}
@@ -479,14 +478,14 @@ export default function LoginScreen({ navigation }) {
 
           <TouchableOpacity
             style={styles.input}
+            activeOpacity={0.8}
+            disabled={loading}
             onPress={() =>
               setShowRoleDropdown(
-                !showRoleDropdown
+                (actual) => !actual
               )
             }
-            activeOpacity={0.8}
           >
-
             <View style={styles.roleDot} />
 
             <Text style={styles.inputText}>
@@ -498,35 +497,27 @@ export default function LoginScreen({ navigation }) {
                 ? '▴'
                 : '▾'}
             </Text>
-
           </TouchableOpacity>
 
           {showRoleDropdown && (
-
             <View style={styles.dropdown}>
-
               {ROLES.map((role) => (
-
                 <TouchableOpacity
                   key={role}
-
+                  disabled={loading}
                   style={[
                     styles.dropdownItem,
-
                     selectedRole === role &&
                       styles.dropdownItemActive,
                   ]}
-
                   onPress={() => {
                     setSelectedRole(role);
                     setShowRoleDropdown(false);
                   }}
                 >
-
                   <Text
                     style={[
                       styles.dropdownText,
-
                       selectedRole === role &&
                         styles.dropdownTextActive,
                     ]}
@@ -535,19 +526,13 @@ export default function LoginScreen({ navigation }) {
                   </Text>
 
                   {selectedRole === role && (
-
                     <Text style={styles.checkIcon}>
                       ✓
                     </Text>
-
                   )}
-
                 </TouchableOpacity>
-
               ))}
-
             </View>
-
           )}
 
           {/* CORREO */}
@@ -557,31 +542,24 @@ export default function LoginScreen({ navigation }) {
           </Text>
 
           <View style={styles.input}>
-
             <Text style={styles.inputIcon}>
               ✉️
             </Text>
 
             <TextInput
               style={styles.textInput}
-
               placeholder="tu@correo.com"
-
               placeholderTextColor={
                 colors.textSecondary
               }
-
               value={email}
-
               onChangeText={setEmail}
-
               keyboardType="email-address"
-
               autoCapitalize="none"
-
               autoCorrect={false}
+              editable={!loading}
+              returnKeyType="next"
             />
-
           </View>
 
           {/* CONTRASEÑA */}
@@ -591,82 +569,71 @@ export default function LoginScreen({ navigation }) {
           </Text>
 
           <View style={styles.input}>
-
             <Text style={styles.inputIcon}>
               🔒
             </Text>
 
             <TextInput
               style={styles.textInput}
-
               placeholder="••••••••"
-
               placeholderTextColor={
                 colors.textSecondary
               }
-
               value={password}
-
               onChangeText={setPassword}
-
-              secureTextEntry={
-                !showPassword
-              }
-
+              secureTextEntry={!showPassword}
               autoCapitalize="none"
-
               autoCorrect={false}
+              editable={!loading}
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
             />
 
             <TouchableOpacity
+              disabled={loading}
               onPress={() =>
                 setShowPassword(
-                  !showPassword
+                  (actual) => !actual
                 )
               }
             >
-
-              <Text style={styles.inputIcon}>
+              <Text style={styles.passwordIcon}>
                 {showPassword
                   ? '🙈'
                   : '👁️'}
               </Text>
-
             </TouchableOpacity>
-
           </View>
 
-          {/* Recuperar contraseña */}
+          {/* RECUPERAR CONTRASEÑA */}
 
           <TouchableOpacity
             style={styles.forgotPassword}
+            disabled={loading}
+            onPress={handleForgotPassword}
           >
-
-            <Text
-              style={
-                styles.forgotPasswordText
-              }
-            >
-              ¿Olvidé mi contraseña?
+            <Text style={styles.forgotPasswordText}>
+              ¿Olvidaste tu contraseña?
             </Text>
-
           </TouchableOpacity>
 
-          {/* BOTÓN */}
+          {/* BOTÓN LOGIN */}
 
           <TouchableOpacity
             onPress={handleLogin}
             activeOpacity={0.85}
-            style={styles.buttonWrapper}
+            style={[
+              styles.buttonWrapper,
+              loading && styles.buttonDisabled,
+            ]}
             disabled={loading}
           >
-
             <LinearGradient
               colors={
                 loading
                   ? [
-                      '#8f6b54',
-                      '#8f6b54',
+                      '#8F6B54',
+                      '#8F6B54',
                     ]
                   : [
                       colors.secondary,
@@ -674,65 +641,60 @@ export default function LoginScreen({ navigation }) {
                       colors.primary,
                     ]
               }
-
               style={styles.loginButton}
-
               start={{ x: 0, y: 0 }}
-
               end={{ x: 1, y: 0 }}
             >
-
               {loading ? (
+                <>
+                  <ActivityIndicator
+                    size="small"
+                    color={colors.white}
+                  />
 
-                <ActivityIndicator
-                  size="small"
-                  color={colors.white}
-                />
-
+                  <Text
+                    style={
+                      styles.loginButtonText
+                    }
+                  >
+                    Iniciando...
+                  </Text>
+                </>
               ) : (
+                <>
+                  <Text
+                    style={
+                      styles.loginButtonText
+                    }
+                  >
+                    Iniciar Sesión
+                  </Text>
 
-                <Text
-                  style={
-                    styles.loginButtonText
-                  }
-                >
-                  Iniciar Sesión
-                </Text>
-
+                  <Text
+                    style={
+                      styles.loginButtonArrow
+                    }
+                  >
+                    →
+                  </Text>
+                </>
               )}
-
-              {!loading && (
-
-                <Text
-                  style={
-                    styles.loginButtonArrow
-                  }
-                >
-                  →
-                </Text>
-
-              )}
-
             </LinearGradient>
-
           </TouchableOpacity>
 
           {/* REGISTRO */}
 
           <View style={styles.registerLink}>
-
             <Text style={styles.registerText}>
               ¿No tienes cuenta?{' '}
             </Text>
 
             <TouchableOpacity
+              disabled={loading}
               onPress={() =>
-                navigation.navigate(
-                  'Register'
-                )
+                navigation.navigate('Register')
               }
             >
-
               <Text
                 style={
                   styles.registerLinkText
@@ -740,15 +702,10 @@ export default function LoginScreen({ navigation }) {
               >
                 Regístrate
               </Text>
-
             </TouchableOpacity>
-
           </View>
-
         </View>
-
       </ScrollView>
-
     </View>
   );
 }
@@ -758,7 +715,6 @@ export default function LoginScreen({ navigation }) {
 // ============================================
 
 const styles = StyleSheet.create({
-
   container: {
     flex: 1,
     backgroundColor: colors.primary,
@@ -818,18 +774,13 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 35,
-
     backgroundColor:
       'rgba(245, 166, 35, 0.3)',
-
     alignItems: 'center',
     justifyContent: 'center',
-
     borderWidth: 2,
-
     borderColor:
       'rgba(245, 166, 35, 0.5)',
-
     marginBottom: 16,
   },
 
@@ -839,12 +790,9 @@ const styles = StyleSheet.create({
 
   floatingEl: {
     position: 'absolute',
-
     backgroundColor:
       'rgba(255,255,255,0.15)',
-
     borderRadius: 20,
-
     padding: 8,
   },
 
@@ -872,36 +820,25 @@ const styles = StyleSheet.create({
 
   appTagline: {
     fontSize: 14,
-
     color:
       'rgba(255,255,255,0.7)',
-
     marginTop: 4,
   },
 
   formCard: {
     backgroundColor:
       colors.background,
-
     borderTopLeftRadius: 36,
-
     borderTopRightRadius: 36,
-
     padding: 28,
-
     paddingTop: 36,
-
     shadowColor: '#000',
-
     shadowOffset: {
       width: 0,
       height: -4,
     },
-
     shadowOpacity: 0.15,
-
     shadowRadius: 20,
-
     elevation: 10,
   },
 
@@ -934,18 +871,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
-
     shadowColor: colors.primary,
-
     shadowOffset: {
       width: 0,
       height: 2,
     },
-
     shadowOpacity: 0.08,
-
     shadowRadius: 8,
-
     elevation: 2,
   },
 
@@ -960,6 +892,11 @@ const styles = StyleSheet.create({
   inputIcon: {
     fontSize: 16,
     marginRight: 10,
+  },
+
+  passwordIcon: {
+    fontSize: 16,
+    marginLeft: 10,
   },
 
   inputText: {
@@ -985,18 +922,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginTop: 6,
     overflow: 'hidden',
-
     shadowColor: '#000',
-
     shadowOffset: {
       width: 0,
       height: 4,
     },
-
     shadowOpacity: 0.1,
-
     shadowRadius: 12,
-
     elevation: 5,
   },
 
@@ -1005,9 +937,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
-
     borderBottomWidth: 1,
-
     borderBottomColor:
       colors.background,
   },
@@ -1047,19 +977,18 @@ const styles = StyleSheet.create({
   buttonWrapper: {
     marginTop: 20,
     borderRadius: 18,
-
     shadowColor: colors.primary,
-
     shadowOffset: {
       width: 0,
       height: 6,
     },
-
     shadowOpacity: 0.35,
-
     shadowRadius: 12,
-
     elevation: 8,
+  },
+
+  buttonDisabled: {
+    opacity: 0.8,
   },
 
   loginButton: {
@@ -1100,5 +1029,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-
 });

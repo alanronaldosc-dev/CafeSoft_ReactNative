@@ -1,6 +1,6 @@
 // LoteService.js
 // Capa de comunicación con /api/lotes
-// Los lotes son los "registros de entrada" de insumos al inventario
+// Los lotes son los "registros de entrada" de insumos al inventar
 
 import { BASE_URL } from '../config/api';
 
