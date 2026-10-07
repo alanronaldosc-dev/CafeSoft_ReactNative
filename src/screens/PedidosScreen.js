@@ -1,6 +1,26 @@
+
 // HU-015: Venta durante la ruta del repartidor
 
 import React, { useCallback, useState } from "react";
+=======
+
+// historia HU-013: Lista interactiva de pedidos
+// Objetivo: Mostrar pedidos agrupados por estado (Pendiente, En Ruta, Entregado, Cancelado)
+// y permitir asignarlos a repartidores en tiempo real.
+
+// HU-014: Botón Navegar en pedido
+// Objetivo: Permitir al repartidor abrir la dirección en Google Maps/Waze
+// desde la tarjeta del pedido, evitando copiar manualmente la dirección.
+
+
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+} from 'react';
+import { BASE_URL } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+
 
 import {
   ActivityIndicator,
@@ -109,6 +129,7 @@ export default function PedidosScreen({ route }) {
     if (!repartidorId) {
       setLoading(false);
 
+
       Alert.alert(
         "Error",
         "No se pudo identificar al repartidor."
@@ -121,6 +142,39 @@ export default function PedidosScreen({ route }) {
       if (mostrarCarga) {
         setLoading(true);
       }
+=======
+
+// =========================================
+  // CARGAR PEDIDOS (todos con estadoo¡
+ // =========================================
+  
+
+const cargarPedidos = async (mostrarCarga = true) => {
+    try {
+      if (mostrarCarga) setLoading(true);
+      const response = await fetch(`${BASE_URL}/ventas/pedidos`);
+      if (!response.ok) throw new Error('No se pudieron cargar los pedidos');
+      const data = await response.json();
+      setPedidos(Array.isArray(data) ? data : []);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
+      if (mostrarCarga) setLoading(false);
+      setRefreshing(false);
+    }
+  };
+  useFocusEffect(
+    useCallback(() => {
+      cargarPedidos();
+      const intervalo = setInterval(() => cargarPedidos(false), 5000);
+      return () => clearInterval(intervalo);
+    }, [])
+  );
+=======
+  // =========================================
+  // CARGAR PEDIDOS
+  // =========================================
+
 
       setSinRuta(false);
 
@@ -341,6 +395,7 @@ export default function PedidosScreen({ route }) {
             clienteEncontrado?.id;
         }
 
+
         if (!clienteId) {
           return;
         }
@@ -348,10 +403,42 @@ export default function PedidosScreen({ route }) {
         const cantidad = Number(
           entrega?.garrafonesEntregados ?? 0
         );
+=======
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    cargarPedidos(false);
+  };
+
+
+   // =========================================
+  // ASIGNAR REPARTIDOR
+  // =========================================
+  const asignarRepartidor = async (pedido) => {
+    try {
+      const response = await fetch(
+        `${BASE_URL}/ventas/${pedido.id}/asignar?repartidor=123`,
+        { method: 'PUT' }
+      );
+      if (!response.ok) throw new Error('No se pudo asignar el repartidor');
+      Alert.alert('Asignado', `Pedido ${pedido.folio} asignado al repartidor`);
+      cargarPedidos(false);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
+  };
+=======
+          console.error('Status:', error.message);  // ya existe
+  // Agrega esto:
+  if (error.response) {
+    console.error('Respuesta:', error.response.status, error.response.data);
+  }
+
 
         const vacios = Number(
           entrega?.envasesVaciosRecibidos ?? 0
         );
+
 
         const total = Number(
           entrega?.montoCobrado ?? 0
@@ -442,6 +529,60 @@ export default function PedidosScreen({ route }) {
       );
     }
   };
+=======
+
+  const estados = ["Pendiente", "En Ruta", "Entregado", "Cancelado"];
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={colors.secondary} />
+        <Text>Cargando pedidos...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#3D1A00', '#6B3A1F']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <Text style={styles.headerTitle}>Pedidos</Text>
+      </LinearGradient>
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {estados.map((estado) => (
+          <View key={estado} style={{ marginBottom: 20 }}>
+            <Text style={{ fontWeight: 'bold', fontSize: 18 }}>{estado}</Text>
+            {pedidos.filter((p) => p.estado === estado).map((pedido) => (
+              <View key={pedido.id} style={styles.pedidoCard}>
+                <Text style={styles.clienteNombre}>
+                  {pedido.nombreCliente || 'Sin nombre'}
+                </Text>
+                <Text>{pedido.direccion}</Text>
+                <TouchableOpacity
+                  style={styles.entregarButton}
+                  onPress={() => asignarRepartidor(pedido)}
+                >
+                  <Text style={styles.entregarButtonText}>Asignar repartidor</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
 
   // ============================================
   // CARGAR TODO AL ENTRAR A MI RUTA
