@@ -1,4 +1,5 @@
-import React, {
+import * as SecureStore from 'expo-secure-store';
+import {
   createContext,
   useContext,
   useState,
@@ -9,12 +10,20 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(null);
 
-  const iniciarSesion = (usuarioData) => {
+  const iniciarSesion = async (usuarioData, token) => {
+    if (token) {
+      await SecureStore.setItemAsync('jwt_token', token);
+    }
     setUsuario(usuarioData);
   };
 
-  const cerrarSesion = () => {
+  const cerrarSesion = async () => {
+    await SecureStore.deleteItemAsync('jwt_token');
     setUsuario(null);
+  };
+
+  const getToken = async () => {
+    return await SecureStore.getItemAsync('jwt_token');
   };
 
   return (
@@ -23,6 +32,7 @@ export function AuthProvider({ children }) {
         usuario,
         iniciarSesion,
         cerrarSesion,
+        getToken,
       }}
     >
       {children}
@@ -32,12 +42,8 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-
   if (!context) {
-    throw new Error(
-      "useAuth debe usarse dentro de AuthProvider"
-    );
+    throw new Error("useAuth debe usarse dentro de AuthProvider");
   }
-
   return context;
 }

@@ -2,11 +2,14 @@
 // Objetivo: Permitir al repartidor abrir la dirección en Google Maps/Waze
 // desde la tarjeta del pedido, evitando copiar manualmente la dirección.
 
+
 import React, {
   useState,
   useCallback,
   useEffect,
 } from 'react';
+import { BASE_URL } from '../config/api';
+import { useAuth } from '../context/AuthContext';
 
 import {
   View,
@@ -28,11 +31,12 @@ import { Linking } from 'react-native';
 import colors from '../theme/colors';
 
 
-import { BASE_URL } from '../config/api';
+
 
 
 export default function PedidosScreen() {
-
+  const { getToken } = useAuth();
+  
   const [
     pedidos,
     setPedidos,
@@ -54,6 +58,34 @@ export default function PedidosScreen() {
   ] = useState(null);
 
 
+
+// =========================================
+  // CARGAR PEDIDOS (todos con estadoo¡
+ // =========================================
+  
+
+const cargarPedidos = async (mostrarCarga = true) => {
+    try {
+      if (mostrarCarga) setLoading(true);
+      const response = await fetch(`${BASE_URL}/ventas/pedidos`);
+      if (!response.ok) throw new Error('No se pudieron cargar los pedidos');
+      const data = await response.json();
+      setPedidos(Array.isArray(data) ? data : []);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
+      if (mostrarCarga) setLoading(false);
+      setRefreshing(false);
+    }
+  };
+  useFocusEffect(
+    useCallback(() => {
+      cargarPedidos();
+      const intervalo = setInterval(() => cargarPedidos(false), 5000);
+      return () => clearInterval(intervalo);
+    }, [])
+  );
+=======
   // =========================================
   // CARGAR PEDIDOS
   // =========================================
@@ -68,10 +100,18 @@ export default function PedidosScreen() {
         }
 
 
-        const response =
-          await fetch(
-            `${BASE_URL}/ventas/pedidos/pendientes`
-          );
+    const token = await getToken();
+
+    const response = await fetch(
+      `${BASE_URL}/ventas/pedidos/pendientes`,
+      {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
 
 
         if (!response.ok) {
@@ -106,31 +146,89 @@ export default function PedidosScreen() {
 
       } catch (error) {
 
-        console.error(
-          'ERROR PEDIDOS:',
-          error
-        );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    cargarPedidos(false);
+  };
 
 
-        Alert.alert(
-          'Error',
-          error.message ||
-          'No se pudieron cargar los pedidos'
-        );
+   // =========================================
+  // ASIGNAR REPARTIDOR
+  // =========================================
+  const asignarRepartidor = async (pedido) => {
+    try {
+      const response = await fetch(
+        `${BASE_URL}/ventas/${pedido.id}/asignar?repartidor=123`,
+        { method: 'PUT' }
+      );
+      if (!response.ok) throw new Error('No se pudo asignar el repartidor');
+      Alert.alert('Asignado', `Pedido ${pedido.folio} asignado al repartidor`);
+      cargarPedidos(false);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
+  };
+=======
+          console.error('Status:', error.message);  // ya existe
+  // Agrega esto:
+  if (error.response) {
+    console.error('Respuesta:', error.response.status, error.response.data);
+  }
 
 
-      } finally {
 
-        if (mostrarCarga) {
-          setLoading(false);
+  const estados = ["Pendiente", "En Ruta", "Entregado", "Cancelado"];
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={colors.secondary} />
+        <Text>Cargando pedidos...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#3D1A00', '#6B3A1F']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <Text style={styles.headerTitle}>Pedidos</Text>
+      </LinearGradient>
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-
-        setRefreshing(false);
-
-      }
-
-    };
-
+      >
+        {estados.map((estado) => (
+          <View key={estado} style={{ marginBottom: 20 }}>
+            <Text style={{ fontWeight: 'bold', fontSize: 18 }}>{estado}</Text>
+            {pedidos.filter((p) => p.estado === estado).map((pedido) => (
+              <View key={pedido.id} style={styles.pedidoCard}>
+                <Text style={styles.clienteNombre}>
+                  {pedido.nombreCliente || 'Sin nombre'}
+                </Text>
+                <Text>{pedido.direccion}</Text>
+                <TouchableOpacity
+                  style={styles.entregarButton}
+                  onPress={() => asignarRepartidor(pedido)}
+                >
+                  <Text style={styles.entregarButtonText}>Asignar repartidor</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
 
   // =========================================
   // CUANDO ENTRA A LA PANTALLA
@@ -220,19 +318,19 @@ export default function PedidosScreen() {
                   );
 
 
-                  const response =
-                    await fetch(
-                      `${BASE_URL}/ventas/${pedido.id}/entregar`,
-                      {
-                        method:
-                          'PUT',
+                  const token = await getToken();
 
-                        headers: {
-                          Accept:
-                            'application/json',
-                        },
-                      }
-                    );
+                  const response = await fetch(
+                    `${BASE_URL}/ventas/${pedido.id}/entregar`,
+                    {
+                      method: 'PUT',
+                      headers: {
+                        Accept: 'application/json',
+                        Authorization: token ? `Bearer ${token}` : '',
+                      },
+                    }
+                  );
+
 
 
                   if (
@@ -348,8 +446,8 @@ export default function PedidosScreen() {
         <LinearGradient
 
           colors={[
-            '#3D1A00',
-            '#6B3A1F',
+            '#0F1B2D',
+            '#0073BB',
           ]}
 
           style={
@@ -429,8 +527,8 @@ export default function PedidosScreen() {
       <LinearGradient
 
         colors={[
-          '#3D1A00',
-          '#6B3A1F',
+          '#0F1B2D',
+          '#0073BB',
         ]}
 
         style={
@@ -1166,7 +1264,12 @@ const styles =
     pedidoCard: {
 
       backgroundColor:
-        colors.white,
+        colors.surface,
+
+      borderWidth: 1,
+
+      borderColor:
+        colors.border,
 
       borderRadius: 20,
 
@@ -1235,7 +1338,7 @@ const styles =
     estadoBadge: {
 
       backgroundColor:
-        '#FFF4E5',
+        '#1A1500',
 
       paddingHorizontal: 10,
 
@@ -1248,7 +1351,7 @@ const styles =
 
     estadoText: {
 
-      color: '#B26A00',
+      color: '#FF9900',
 
       fontSize: 11,
 
@@ -1368,7 +1471,7 @@ const styles =
     resumen: {
 
       backgroundColor:
-        colors.background,
+        colors.surfaceAlt,
 
       borderRadius: 14,
 
@@ -1417,7 +1520,7 @@ const styles =
       borderTopWidth: 1,
 
       borderTopColor:
-        colors.surface,
+        colors.border,
 
       paddingTop: 8,
 
@@ -1476,7 +1579,7 @@ const styles =
     entregarButton: {
 
       backgroundColor:
-        colors.success,
+        '#1D8348',
 
       borderRadius: 14,
 

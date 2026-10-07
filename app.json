@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "proyectoVini",
+    "name": "CafeSoft",
     "slug": "proyectoVini",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,20 +10,21 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#3D1A00"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.utvt.cafesoft"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#3D1A00"
       },
       "edgeToEdgeEnabled": true,
       "usesCleartextTraffic": true,
-      "package": "com.alan_monnkey.proyectoVini",
-      "networkSecurityConfig": "@xml/network_security_config"
+      "package": "com.utvt.soft",
+      "versionCode": 1
     },
     "plugins": [
       [
@@ -33,7 +34,8 @@
             "usesCleartextTraffic": true
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
@@ -42,6 +44,7 @@
       "eas": {
         "projectId": "0bb697f3-80ce-46eb-8501-f588747b3fa9"
       }
-    }
+    },
+    "owner": "alan_monnkey"
   }
 }
