@@ -1,9 +1,5 @@
-// ============================================
-// HU-008 - INICIO DE SESIÓN MÓVIL
-// Actividad 07 - Implementación de seguridad
-// ============================================
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 
 import {
   View,
@@ -14,65 +10,218 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-} from 'react-native';
+  Animated,
+  Easing,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+} from "react-native";
 
-import { LinearGradient } from 'expo-linear-gradient';
-
-import api from '../config/api';
-import { useAuth } from '../context/AuthContext';
-import colors from '../theme/colors';
+import { LinearGradient } from "expo-linear-gradient";
+import api from "../config/api";
+import { useAuth } from "../context/AuthContext";
 
 // ============================================
-// ROLES
+// COLORES AQUASOFT
 // ============================================
+
+const COLORS = {
+  primary: "#008FB5",
+  turquoise: "#29C9D4",
+  deep: "#07556B",
+  dark: "#043A4C",
+  ice: "#E6F8FA",
+  background: "#EFFAFF",
+  white: "#FFFFFF",
+  text: "#173C4A",
+  muted: "#668491",
+  border: "#D3ECF2",
+  success: "#13856E",
+};
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
 
 const ROLES = [
-  'Cliente',
-  'Administrador',
-  'Empleado',
-  'Repartidor',
+  "Cliente",
+  "Administrador",
+  "Empleado",
+  "Repartidor",
 ];
-
-// ============================================
-// CONVERTIR userTipo A ROL
-// ============================================
 
 const obtenerRolPorTipo = (userTipo) => {
   const tipo = Number(userTipo);
 
   switch (tipo) {
     case 0:
-      return 'Administrador';
-
+      return "Administrador";
     case 1:
-      return 'Empleado';
-
+      return "Empleado";
     case 2:
-      return 'Cliente';
-
+      return "Cliente";
     case 4:
-      return 'Repartidor';
-
+      return "Repartidor";
     default:
       return null;
   }
 };
 
 // ============================================
-// LOGIN
+// ANIMACIÓN DE CAMIONETA
+// ============================================
+
+function CamionetaAnimada() {
+  const movimiento = useRef(new Animated.Value(-120)).current;
+  const ruedas = useRef(new Animated.Value(0)).current;
+  const gotas = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animacionCamion = Animated.loop(
+      Animated.timing(movimiento, {
+        toValue: SCREEN_WIDTH + 120,
+        duration: 5500,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+
+    const animacionRuedas = Animated.loop(
+      Animated.timing(ruedas, {
+        toValue: 1,
+        duration: 500,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+
+    const animacionGotas = Animated.loop(
+      Animated.sequence([
+        Animated.timing(gotas, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(gotas, {
+          toValue: 0,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    animacionCamion.start();
+    animacionRuedas.start();
+    animacionGotas.start();
+
+    return () => {
+      animacionCamion.stop();
+      animacionRuedas.stop();
+      animacionGotas.stop();
+    };
+  }, [movimiento, ruedas, gotas]);
+
+  const rotacion = ruedas.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
+
+  const opacidadGotas = gotas.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.35, 1],
+  });
+
+  return (
+    <View style={styles.animationContainer}>
+      <Animated.View
+        style={[
+          styles.waterDropOne,
+          { opacity: opacidadGotas },
+        ]}
+      >
+        <Text style={styles.waterDropText}>💧</Text>
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.waterDropTwo,
+          { opacity: opacidadGotas },
+        ]}
+      >
+        <Text style={styles.waterDropText}>💧</Text>
+      </Animated.View>
+
+      <Text style={styles.animationSubtitle}>
+        Agua purificada hasta tu hogar
+      </Text>
+
+      <View style={styles.roadScene}>
+        <Animated.View
+          style={[
+            styles.truckContainer,
+            {
+              transform: [
+                { translateX: movimiento },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.truckBody}>
+            <View style={styles.truckCargo}>
+              <Text style={styles.truckLogo}>💧</Text>
+              <Text style={styles.truckBrand}>AquaSoft</Text>
+            </View>
+
+            <View style={styles.truckCab}>
+              <View style={styles.truckWindow} />
+              <View style={styles.truckLight} />
+            </View>
+          </View>
+
+          <View style={styles.wheelsRow}>
+            <Animated.View
+              style={[
+                styles.wheel,
+                { transform: [{ rotate: rotacion }] },
+              ]}
+            >
+              <View style={styles.wheelCenter} />
+            </Animated.View>
+
+            <Animated.View
+              style={[
+                styles.wheel,
+                { transform: [{ rotate: rotacion }] },
+              ]}
+            >
+              <View style={styles.wheelCenter} />
+            </Animated.View>
+          </View>
+        </Animated.View>
+
+        <View style={styles.road}>
+          <View style={styles.roadLines}>
+            {[1, 2, 3, 4, 5, 6].map((item) => (
+              <View key={item} style={styles.roadLine} />
+            ))}
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// ============================================
+// PANTALLA LOGIN AQUASOFT
 // ============================================
 
 export default function LoginScreen({ navigation }) {
   const { iniciarSesion } = useAuth();
 
   const [selectedRole, setSelectedRole] =
-    useState('Cliente');
+    useState("Cliente");
 
-  const [email, setEmail] =
-    useState('');
-
-  const [password, setPassword] =
-    useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const [showPassword, setShowPassword] =
     useState(false);
@@ -80,17 +229,13 @@ export default function LoginScreen({ navigation }) {
   const [showRoleDropdown, setShowRoleDropdown] =
     useState(false);
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
 
   // ============================================
-  // OBTENER USUARIO DESDE LA RESPUESTA
+  // OBTENER DATOS DEL USUARIO
   // ============================================
 
-  const obtenerUsuario = (
-    responseData,
-    fallbackEmail
-  ) => {
+  const obtenerUsuario = (responseData, fallbackEmail) => {
     const source =
       responseData?.usuario ??
       responseData?.user ??
@@ -130,7 +275,7 @@ export default function LoginScreen({ navigation }) {
         usuario?.nombre ??
         usuario?.name ??
         usuario?.username ??
-        'Usuario',
+        "Usuario",
 
       email:
         usuario?.email ??
@@ -139,12 +284,7 @@ export default function LoginScreen({ navigation }) {
 
       userTipo,
 
-      // El rol del servidor tiene prioridad.
-      // Nunca damos permisos únicamente porque
-      // el usuario eligió un rol en la pantalla.
-      rol:
-        rolBackend ??
-        selectedRole,
+      rol: rolBackend ?? selectedRole,
     };
   };
 
@@ -153,94 +293,60 @@ export default function LoginScreen({ navigation }) {
   // ============================================
 
   const handleLogin = async () => {
-    const trimmedEmail =
-      email.trim().toLowerCase();
+    if (loading) return;
 
-    // No usamos trim() en la contraseña porque
-    // los espacios pueden formar parte de ella.
+    const trimmedEmail = email.trim().toLowerCase();
     const passwordValue = password;
-
-    // ==========================================
-    // SEGURIDAD 1
-    // VALIDACIÓN DE ENTRADAS
-    // ==========================================
 
     if (!trimmedEmail || !passwordValue) {
       Alert.alert(
-        'Datos incompletos',
-        'El correo y la contraseña son obligatorios.'
+        "Datos incompletos",
+        "El correo y la contraseña son obligatorios."
       );
-
       return;
     }
 
-    const emailRegex =
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(trimmedEmail)) {
       Alert.alert(
-        'Correo inválido',
-        'Ingresa un correo electrónico válido.'
+        "Correo inválido",
+        "Ingresa un correo electrónico válido."
       );
-
       return;
     }
 
     if (passwordValue.length < 8) {
       Alert.alert(
-        'Contraseña inválida',
-        'La contraseña debe contener al menos 8 caracteres.'
+        "Contraseña inválida",
+        "La contraseña debe contener al menos 8 caracteres."
       );
-
       return;
     }
 
     setLoading(true);
 
     try {
-      // ==========================================
-      // UNA SOLA PETICIÓN DE LOGIN
-      // ==========================================
-      //
-      // Esto es importante para el bloqueo
-      // temporal por intentos fallidos.
-      //
-      // Cada toque en "Iniciar Sesión"
-      // representa únicamente un intento.
-      // ==========================================
-
       const response = await api.post(
-        '/usuarios/login',
+        "/usuarios/login",
         {
           email: trimmedEmail,
           password: passwordValue,
         }
       );
 
-      // ==========================================
-      // VALIDAR RESPUESTA
-      // ==========================================
-
       const usuario = obtenerUsuario(
         response.data,
         trimmedEmail
       );
 
-      if (
-        !usuario?.id &&
-        !usuario?.email
-      ) {
+      if (!usuario?.id && !usuario?.email) {
         Alert.alert(
-          'Error',
-          'No fue posible obtener la información del usuario.'
+          "Error",
+          "No fue posible obtener la información del usuario."
         );
-
         return;
       }
-
-      // ==========================================
-      // OBTENER JWT
-      // ==========================================
 
       const token =
         response.data?.token ??
@@ -249,102 +355,71 @@ export default function LoginScreen({ navigation }) {
 
       if (!token) {
         Alert.alert(
-          'Error de seguridad',
-          'El servidor no proporcionó un token de acceso.'
+          "Error de autenticación",
+          "El servidor no proporcionó un token de acceso."
         );
-
         return;
       }
 
-      // ==========================================
-      // GUARDAR SESIÓN
-      // ==========================================
+      await iniciarSesion(usuario, token);
 
-      await iniciarSesion(
-        usuario,
-        token
-      );
-
-      /*
-       * IMPORTANTE:
-       *
-       * Ya NO usamos:
-       *
-       * navigation.reset(...)
-       *
-       * AppNavigator detecta que existe un usuario
-       * autenticado y automáticamente muestra:
-       *
-       * Repartidor -> RepartidorHome
-       * Otros      -> Main
-       */
+      // AppNavigator cambia automáticamente
+      // a la pantalla correspondiente al usuario.
 
     } catch (error) {
-      const status =
-        error?.response?.status;
-
-      // ==========================================
-      // SEGURIDAD 2
-      // MANEJO SEGURO DE ERRORES
-      // ==========================================
+      const status = error?.response?.status;
 
       if (status === 429) {
         Alert.alert(
-          '🔒 Cuenta bloqueada',
-          'Has realizado demasiados intentos fallidos. Intenta nuevamente más tarde.'
+          "Cuenta bloqueada",
+          "Has realizado demasiados intentos fallidos. Intenta nuevamente más tarde."
         );
-
         return;
       }
 
       if (status === 401) {
         Alert.alert(
-          'Acceso denegado',
-          'Correo o contraseña incorrectos.'
+          "Acceso denegado",
+          "Correo o contraseña incorrectos."
         );
-
         return;
       }
 
       if (status === 403) {
         Alert.alert(
-          'Acceso no autorizado',
-          'Tu usuario no tiene permiso para realizar esta operación.'
+          "Acceso no autorizado",
+          "Tu usuario no tiene permiso para realizar esta operación."
         );
-
         return;
       }
 
       if (status === 400) {
         Alert.alert(
-          'Datos inválidos',
-          'Verifica la información ingresada.'
+          "Datos inválidos",
+          "Verifica la información ingresada."
         );
-
         return;
       }
 
       if (status >= 500) {
         Alert.alert(
-          'Error del servidor',
-          'Ocurrió un problema en el servidor. Intenta nuevamente.'
+          "Error del servidor",
+          "Ocurrió un problema en el servidor. Intenta nuevamente."
         );
-
         return;
       }
 
       if (!error?.response) {
         Alert.alert(
-          'Error de conexión',
-          'No fue posible conectarse con el servidor. Verifica tu conexión y que la API esté encendida.'
+          "Error de conexión",
+          "No fue posible conectarse con el servidor. Verifica tu conexión y que la API esté encendida."
         );
-
         return;
       }
 
       Alert.alert(
-        'Error de inicio de sesión',
-        'No fue posible iniciar sesión. Intenta nuevamente.'
+        "Error de inicio de sesión",
+        "No fue posible iniciar sesión. Intenta nuevamente."
       );
 
     } finally {
@@ -352,14 +427,10 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
-  // ============================================
-  // RECUPERAR CONTRASEÑA
-  // ============================================
-
   const handleForgotPassword = () => {
     Alert.alert(
-      'Recuperar contraseña',
-      'La recuperación de contraseña aún no está disponible.'
+      "Recuperar contraseña",
+      "La recuperación de contraseña aún no está disponible."
     );
   };
 
@@ -369,664 +440,672 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={COLORS.deep}
+      />
+
       <LinearGradient
         colors={[
-          '#3D1A00',
-          '#6B3A1F',
-          '#3D1A00',
+          COLORS.deep,
+          COLORS.primary,
+          COLORS.turquoise,
         ]}
-        style={styles.gradient}
+        style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
 
-      {/* CÍRCULOS DECORATIVOS */}
-
-      <View
-        style={[
-          styles.decorCircle,
-          styles.decorCircle1,
-        ]}
-      />
-
-      <View
-        style={[
-          styles.decorCircle,
-          styles.decorCircle2,
-        ]}
-      />
-
-      <View
-        style={[
-          styles.decorCircle,
-          styles.decorCircle3,
-        ]}
-      />
-
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        {/* ENCABEZADO */}
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* ENCABEZADO AQUASOFT */}
 
-        <View style={styles.illustrationSection}>
-          <View style={styles.illustrationMain}>
-            <Text style={styles.illustrationEmoji}>
-              ☕
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.floatingEl,
-              styles.floatingEl1,
-            ]}
-          >
-            <Text style={{ fontSize: 20 }}>
-              ✨
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.floatingEl,
-              styles.floatingEl2,
-            ]}
-          >
-            <Text style={{ fontSize: 16 }}>
-              🫘
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.floatingEl,
-              styles.floatingEl3,
-            ]}
-          >
-            <Text style={{ fontSize: 18 }}>
-              🍂
-            </Text>
-          </View>
-
-          <Text style={styles.appName}>
-            CafeSoft
-          </Text>
-
-          <Text style={styles.appTagline}>
-            Tu café favorito, donde quieras
-          </Text>
-        </View>
-
-        {/* FORMULARIO */}
-
-        <View style={styles.formCard}>
-          <Text style={styles.title}>
-            Bienvenido de nuevo
-          </Text>
-
-          <Text style={styles.subtitle}>
-            Inicia sesión para continuar
-          </Text>
-
-          {/* ROL */}
-
-          <Text style={styles.label}>
-            ROL DE ACCESO
-          </Text>
-
-          <TouchableOpacity
-            style={styles.input}
-            activeOpacity={0.8}
-            disabled={loading}
-            onPress={() =>
-              setShowRoleDropdown(
-                (actual) => !actual
-              )
-            }
-          >
-            <View style={styles.roleDot} />
-
-            <Text style={styles.inputText}>
-              {selectedRole}
-            </Text>
-
-            <Text style={styles.dropdownArrow}>
-              {showRoleDropdown
-                ? '▴'
-                : '▾'}
-            </Text>
-          </TouchableOpacity>
-
-          {showRoleDropdown && (
-            <View style={styles.dropdown}>
-              {ROLES.map((role) => (
-                <TouchableOpacity
-                  key={role}
-                  disabled={loading}
-                  style={[
-                    styles.dropdownItem,
-                    selectedRole === role &&
-                      styles.dropdownItemActive,
-                  ]}
-                  onPress={() => {
-                    setSelectedRole(role);
-                    setShowRoleDropdown(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.dropdownText,
-                      selectedRole === role &&
-                        styles.dropdownTextActive,
-                    ]}
-                  >
-                    {role}
-                  </Text>
-
-                  {selectedRole === role && (
-                    <Text style={styles.checkIcon}>
-                      ✓
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              ))}
+          <View style={styles.header}>
+            <View style={styles.logoCircle}>
+              <Text style={styles.logoEmoji}>💧</Text>
             </View>
-          )}
 
-          {/* CORREO */}
-
-          <Text style={styles.label}>
-            CORREO ELECTRÓNICO
-          </Text>
-
-          <View style={styles.input}>
-            <Text style={styles.inputIcon}>
-              ✉️
+            <Text style={styles.appName}>
+              AquaSoft
             </Text>
 
-            <TextInput
-              style={styles.textInput}
-              placeholder="tu@correo.com"
-              placeholderTextColor={
-                colors.textSecondary
-              }
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!loading}
-              returnKeyType="next"
-            />
+            <Text style={styles.appTagline}>
+              Pureza que llega hasta ti
+            </Text>
+
+            {/* CAMIONETA ANIMADA */}
+
+            <CamionetaAnimada />
           </View>
 
-          {/* CONTRASEÑA */}
+          {/* FORMULARIO */}
 
-          <Text style={styles.label}>
-            CONTRASEÑA
-          </Text>
+          <View style={styles.formCard}>
+            <View style={styles.formTopLine} />
 
-          <View style={styles.input}>
-            <Text style={styles.inputIcon}>
-              🔒
+            <Text style={styles.title}>
+              ¡Bienvenido!
             </Text>
 
-            <TextInput
-              style={styles.textInput}
-              placeholder="••••••••"
-              placeholderTextColor={
-                colors.textSecondary
-              }
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!loading}
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-            />
+            <Text style={styles.subtitle}>
+              Inicia sesión y disfruta de AquaSoft.
+            </Text>
+
+            {/* ROL */}
+
+            <Text style={styles.label}>
+              TIPO DE USUARIO
+            </Text>
 
             <TouchableOpacity
+              style={styles.input}
               disabled={loading}
+              activeOpacity={0.8}
               onPress={() =>
-                setShowPassword(
-                  (actual) => !actual
-                )
+                setShowRoleDropdown((actual) => !actual)
               }
             >
-              <Text style={styles.passwordIcon}>
-                {showPassword
-                  ? '🙈'
-                  : '👁️'}
+              <Text style={styles.inputIcon}>👤</Text>
+
+              <Text style={styles.inputText}>
+                {selectedRole}
+              </Text>
+
+              <Text style={styles.dropdownArrow}>
+                {showRoleDropdown ? "▴" : "▾"}
               </Text>
             </TouchableOpacity>
-          </View>
 
-          {/* RECUPERAR CONTRASEÑA */}
-
-          <TouchableOpacity
-            style={styles.forgotPassword}
-            disabled={loading}
-            onPress={handleForgotPassword}
-          >
-            <Text style={styles.forgotPasswordText}>
-              ¿Olvidaste tu contraseña?
-            </Text>
-          </TouchableOpacity>
-
-          {/* BOTÓN LOGIN */}
-
-          <TouchableOpacity
-            onPress={handleLogin}
-            activeOpacity={0.85}
-            style={[
-              styles.buttonWrapper,
-              loading && styles.buttonDisabled,
-            ]}
-            disabled={loading}
-          >
-            <LinearGradient
-              colors={
-                loading
-                  ? [
-                      '#8F6B54',
-                      '#8F6B54',
-                    ]
-                  : [
-                      colors.secondary,
-                      '#A0522D',
-                      colors.primary,
-                    ]
-              }
-              style={styles.loginButton}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              {loading ? (
-                <>
-                  <ActivityIndicator
-                    size="small"
-                    color={colors.white}
-                  />
-
-                  <Text
-                    style={
-                      styles.loginButtonText
-                    }
+            {showRoleDropdown && (
+              <View style={styles.dropdown}>
+                {ROLES.map((role) => (
+                  <TouchableOpacity
+                    key={role}
+                    disabled={loading}
+                    style={[
+                      styles.dropdownItem,
+                      selectedRole === role &&
+                        styles.dropdownItemActive,
+                    ]}
+                    onPress={() => {
+                      setSelectedRole(role);
+                      setShowRoleDropdown(false);
+                    }}
                   >
-                    Iniciando...
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <Text
-                    style={
-                      styles.loginButtonText
-                    }
-                  >
-                    Iniciar Sesión
-                  </Text>
+                    <Text
+                      style={[
+                        styles.dropdownText,
+                        selectedRole === role &&
+                          styles.dropdownTextActive,
+                      ]}
+                    >
+                      {role}
+                    </Text>
 
-                  <Text
-                    style={
-                      styles.loginButtonArrow
-                    }
-                  >
-                    →
-                  </Text>
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+                    {selectedRole === role && (
+                      <Text style={styles.checkIcon}>
+                        ✓
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
-          {/* REGISTRO */}
+            {/* CORREO */}
 
-          <View style={styles.registerLink}>
-            <Text style={styles.registerText}>
-              ¿No tienes cuenta?{' '}
+            <Text style={styles.label}>
+              CORREO ELECTRÓNICO
             </Text>
 
-            <TouchableOpacity
-              disabled={loading}
-              onPress={() =>
-                navigation.navigate('Register')
-              }
-            >
-              <Text
-                style={
-                  styles.registerLinkText
+            <View style={styles.input}>
+              <Text style={styles.inputIcon}>✉️</Text>
+
+              <TextInput
+                style={styles.textInput}
+                placeholder="tu@correo.com"
+                placeholderTextColor={COLORS.muted}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loading}
+                returnKeyType="next"
+              />
+            </View>
+
+            {/* CONTRASEÑA */}
+
+            <Text style={styles.label}>
+              CONTRASEÑA
+            </Text>
+
+            <View style={styles.input}>
+              <Text style={styles.inputIcon}>🔒</Text>
+
+              <TextInput
+                style={styles.textInput}
+                placeholder="••••••••"
+                placeholderTextColor={COLORS.muted}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loading}
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+              />
+
+              <TouchableOpacity
+                disabled={loading}
+                onPress={() =>
+                  setShowPassword((actual) => !actual)
                 }
               >
-                Regístrate
+                <Text style={styles.passwordIcon}>
+                  {showPassword ? "🙈" : "👁️"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* RECUPERAR CONTRASEÑA */}
+
+            <TouchableOpacity
+              style={styles.forgotPassword}
+              disabled={loading}
+              onPress={handleForgotPassword}
+            >
+              <Text style={styles.forgotPasswordText}>
+                ¿Olvidaste tu contraseña?
               </Text>
             </TouchableOpacity>
+
+            {/* BOTÓN LOGIN */}
+
+            <TouchableOpacity
+              onPress={handleLogin}
+              activeOpacity={0.85}
+              style={[
+                styles.buttonWrapper,
+                loading && styles.buttonDisabled,
+              ]}
+              disabled={loading}
+            >
+              <LinearGradient
+                colors={
+                  loading
+                    ? ["#8AAFB9", "#8AAFB9"]
+                    : [COLORS.primary, COLORS.turquoise]
+                }
+                style={styles.loginButton}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                {loading ? (
+                  <>
+                    <ActivityIndicator
+                      size="small"
+                      color={COLORS.white}
+                    />
+
+                    <Text style={styles.loginButtonText}>
+                      Iniciando sesión...
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.loginButtonText}>
+                      Iniciar sesión
+                    </Text>
+
+                    <Text style={styles.loginButtonArrow}>
+                      →
+                    </Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* REGISTRO */}
+
+            <View style={styles.registerLink}>
+              <Text style={styles.registerText}>
+                ¿No tienes cuenta?{" "}
+              </Text>
+
+              <TouchableOpacity
+                disabled={loading}
+                onPress={() =>
+                  navigation.navigate("Register")
+                }
+              >
+                <Text style={styles.registerLinkText}>
+                  Regístrate
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                💧 AQUASOFT · AGUA PURIFICADA
+              </Text>
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 // ============================================
-// ESTILOS
+// ESTILOS AQUASOFT
 // ============================================
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary,
-  },
-
-  gradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-
-  decorCircle: {
-    position: 'absolute',
-    borderRadius: 999,
-    opacity: 0.15,
-  },
-
-  decorCircle1: {
-    width: 300,
-    height: 300,
-    backgroundColor: '#C8763A',
-    top: -80,
-    right: -80,
-  },
-
-  decorCircle2: {
-    width: 200,
-    height: 200,
-    backgroundColor: '#3D1A00',
-    top: 100,
-    left: -60,
-  },
-
-  decorCircle3: {
-    width: 150,
-    height: 150,
-    backgroundColor: '#3D1A00',
-    top: 220,
-    right: 20,
+    backgroundColor: COLORS.deep,
   },
 
   scroll: {
     flexGrow: 1,
-    paddingBottom: 40,
+    paddingTop: 20,
   },
 
-  illustrationSection: {
-    alignItems: 'center',
-    paddingTop: 70,
-    paddingBottom: 30,
-    position: 'relative',
+  header: {
+    alignItems: "center",
+    paddingTop: 30,
+    paddingBottom: 20,
   },
 
-  illustrationMain: {
-    width: 110,
-    height: 110,
-    borderRadius: 35,
-    backgroundColor:
-      'rgba(245, 166, 35, 0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor:
-      'rgba(245, 166, 35, 0.5)',
-    marginBottom: 16,
+  logoCircle: {
+    width: 75,
+    height: 75,
+    borderRadius: 25,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
   },
 
-  illustrationEmoji: {
-    fontSize: 56,
-  },
-
-  floatingEl: {
-    position: 'absolute',
-    backgroundColor:
-      'rgba(255,255,255,0.15)',
-    borderRadius: 20,
-    padding: 8,
-  },
-
-  floatingEl1: {
-    top: 60,
-    right: 60,
-  },
-
-  floatingEl2: {
-    top: 130,
-    left: 50,
-  },
-
-  floatingEl3: {
-    top: 80,
-    left: 80,
+  logoEmoji: {
+    fontSize: 40,
   },
 
   appName: {
-    fontSize: 34,
-    fontWeight: 'bold',
-    color: colors.textLight,
-    letterSpacing: 2,
+    fontSize: 37,
+    fontWeight: "900",
+    color: COLORS.white,
+    marginTop: 12,
+    letterSpacing: 1,
   },
 
   appTagline: {
-    fontSize: 14,
-    color:
-      'rgba(255,255,255,0.7)',
-    marginTop: 4,
+    color: "#D8F8FC",
+    fontSize: 13,
+    marginTop: 5,
   },
 
+  // ============================================
+  // ANIMACIÓN
+  // ============================================
+
+  animationContainer: {
+    width: "100%",
+    height: 180,
+    marginTop: 15,
+    overflow: "hidden",
+    justifyContent: "flex-end",
+  },
+
+  animationSubtitle: {
+    position: "absolute",
+    top: 15,
+    alignSelf: "center",
+    color: COLORS.white,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  waterDropOne: {
+    position: "absolute",
+    top: 45,
+    left: 35,
+  },
+
+  waterDropTwo: {
+    position: "absolute",
+    top: 60,
+    right: 45,
+  },
+
+  waterDropText: {
+    fontSize: 23,
+  },
+
+  roadScene: {
+    height: 115,
+    justifyContent: "flex-end",
+  },
+
+  truckContainer: {
+    position: "absolute",
+    bottom: 27,
+    left: 0,
+    width: 125,
+    height: 77,
+    zIndex: 3,
+  },
+
+  truckBody: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    height: 55,
+  },
+
+  truckCargo: {
+    width: 82,
+    height: 49,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 4,
+    backgroundColor: COLORS.white,
+    borderWidth: 2,
+    borderColor: COLORS.ice,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  truckLogo: {
+    fontSize: 20,
+  },
+
+  truckBrand: {
+    color: COLORS.deep,
+    fontSize: 10,
+    fontWeight: "900",
+  },
+
+  truckCab: {
+    width: 40,
+    height: 39,
+    backgroundColor: COLORS.turquoise,
+    borderTopRightRadius: 14,
+    borderBottomRightRadius: 5,
+    borderWidth: 2,
+    borderColor: COLORS.ice,
+    justifyContent: "center",
+    paddingLeft: 5,
+  },
+
+  truckWindow: {
+    width: 22,
+    height: 17,
+    borderTopRightRadius: 7,
+    backgroundColor: COLORS.deep,
+  },
+
+  truckLight: {
+    position: "absolute",
+    right: -3,
+    bottom: 6,
+    width: 6,
+    height: 9,
+    borderRadius: 3,
+    backgroundColor: "#FFF2A8",
+  },
+
+  wheelsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    marginTop: -6,
+    width: 117,
+  },
+
+  wheel: {
+    width: 23,
+    height: 23,
+    borderRadius: 12,
+    backgroundColor: "#16333D",
+    borderWidth: 4,
+    borderColor: "#0A2530",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  wheelCenter: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: COLORS.white,
+  },
+
+  road: {
+    height: 28,
+    backgroundColor: COLORS.dark,
+    justifyContent: "center",
+    borderTopWidth: 3,
+    borderTopColor: "#B5F4F9",
+  },
+
+  roadLines: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+  },
+
+  roadLine: {
+    width: 33,
+    height: 3,
+    backgroundColor: COLORS.white,
+    borderRadius: 3,
+  },
+
+  // ============================================
+  // FORMULARIO
+  // ============================================
+
   formCard: {
-    backgroundColor:
-      colors.background,
-    borderTopLeftRadius: 36,
-    borderTopRightRadius: 36,
-    padding: 28,
-    paddingTop: 36,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 34,
+    borderTopRightRadius: 34,
+    paddingHorizontal: 26,
+    paddingTop: 28,
+    paddingBottom: 35,
+    flexGrow: 1,
+  },
+
+  formTopLine: {
+    width: 48,
+    height: 5,
+    borderRadius: 10,
+    backgroundColor: COLORS.turquoise,
+    alignSelf: "center",
+    marginBottom: 23,
   },
 
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.primary,
-    marginBottom: 4,
+    fontWeight: "900",
+    color: COLORS.deep,
   },
 
   subtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 24,
+    fontSize: 13,
+    color: COLORS.muted,
+    marginTop: 6,
+    marginBottom: 23,
   },
 
   label: {
     fontSize: 11,
-    fontWeight: '800',
-    color: colors.textSecondary,
-    letterSpacing: 1.5,
-    marginBottom: 8,
-    marginTop: 16,
+    fontWeight: "800",
+    color: COLORS.deep,
+    letterSpacing: 1.1,
+    marginBottom: 9,
+    marginTop: 15,
   },
 
   input: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-
-  roleDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.secondary,
-    marginRight: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.background,
+    borderRadius: 15,
+    paddingHorizontal: 15,
+    minHeight: 55,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
 
   inputIcon: {
-    fontSize: 16,
-    marginRight: 10,
-  },
-
-  passwordIcon: {
-    fontSize: 16,
-    marginLeft: 10,
+    fontSize: 17,
+    marginRight: 11,
   },
 
   inputText: {
     flex: 1,
     fontSize: 15,
-    color: colors.textPrimary,
-    fontWeight: '500',
+    color: COLORS.text,
+    fontWeight: "600",
   },
 
   textInput: {
     flex: 1,
     fontSize: 15,
-    color: colors.textPrimary,
+    color: COLORS.text,
+    paddingVertical: 12,
   },
 
   dropdownArrow: {
-    color: colors.textSecondary,
-    fontSize: 14,
+    fontSize: 16,
+    color: COLORS.primary,
   },
 
   dropdown: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    marginTop: 6,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
+    backgroundColor: COLORS.white,
+    borderRadius: 15,
+    marginTop: 7,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    elevation: 3,
   },
 
   dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor:
-      colors.background,
+    borderBottomColor: COLORS.border,
   },
 
   dropdownItemActive: {
-    backgroundColor: colors.surface,
+    backgroundColor: COLORS.ice,
   },
 
   dropdownText: {
     flex: 1,
-    fontSize: 15,
-    color: colors.textPrimary,
+    fontSize: 14,
+    color: COLORS.text,
   },
 
   dropdownTextActive: {
-    fontWeight: '700',
-    color: colors.secondary,
+    fontWeight: "800",
+    color: COLORS.primary,
   },
 
   checkIcon: {
-    color: colors.secondary,
-    fontWeight: 'bold',
+    color: COLORS.primary,
+    fontWeight: "900",
+  },
+
+  passwordIcon: {
+    fontSize: 17,
+    marginLeft: 10,
   },
 
   forgotPassword: {
-    alignSelf: 'flex-end',
-    marginTop: 12,
-    marginBottom: 8,
+    alignSelf: "flex-end",
+    marginTop: 13,
   },
 
   forgotPasswordText: {
-    color: colors.secondary,
-    fontSize: 14,
-    fontWeight: '600',
+    color: COLORS.primary,
+    fontSize: 13,
+    fontWeight: "700",
   },
 
   buttonWrapper: {
-    marginTop: 20,
-    borderRadius: 18,
-    shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
+    marginTop: 26,
+    borderRadius: 16,
+    elevation: 5,
   },
 
   buttonDisabled: {
-    opacity: 0.8,
+    opacity: 0.75,
   },
 
   loginButton: {
-    borderRadius: 18,
+    borderRadius: 16,
     paddingVertical: 17,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 10,
   },
 
   loginButtonText: {
-    color: colors.white,
-    fontSize: 17,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: "800",
   },
 
   loginButtonArrow: {
-    color: colors.white,
-    fontSize: 18,
-    fontWeight: 'bold',
+    color: COLORS.white,
+    fontSize: 21,
+    fontWeight: "800",
   },
 
   registerLink: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 24,
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 26,
+    alignItems: "center",
   },
 
   registerText: {
-    color: colors.textSecondary,
-    fontSize: 14,
+    color: COLORS.muted,
+    fontSize: 13,
   },
 
   registerLinkText: {
-    color: colors.secondary,
-    fontSize: 14,
-    fontWeight: 'bold',
+    color: COLORS.primary,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+
+  footer: {
+    alignItems: "center",
+    marginTop: 35,
+    paddingTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+
+  footerText: {
+    color: COLORS.muted,
+    fontSize: 10,
+    letterSpacing: 1.5,
+    fontWeight: "700",
   },
 });

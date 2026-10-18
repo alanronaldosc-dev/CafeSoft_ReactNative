@@ -45,3 +45,14 @@ yarn-error.*
 .env.local
 .env.production
 
+# Todas las variantes de variables de entorno
+.env*
+!.env.example
+
+# Archivos temporales
+*.tmp
+*.bak
+
+# Logs
+*.log
+logs/
