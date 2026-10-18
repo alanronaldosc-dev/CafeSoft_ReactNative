@@ -14,7 +14,7 @@ import CategoriaService from '../services/CategoriaService';
 
 const IVA = 0.16;
 const USUARIO_ID = 1;
-import { BASE_URL } from '../config/api';
+import api from '../config/api';
 
 export default function CartScreen() {
   const { cartItems, addToCart, removeFromCart, deleteFromCart, totalItems, totalPrice } = useCart();
@@ -34,6 +34,8 @@ export default function CartScreen() {
   const [montoEfectivo, setMontoEfectivo] = useState('');
   const [loadingVenta, setLoadingVenta] = useState(false);
   const [ticket, setTicket] = useState(null);
+  const [clienteFidelidadId, setClienteFidelidadId] = useState('');
+  const [saldoPuntos, setSaldoPuntos] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -80,23 +82,16 @@ export default function CartScreen() {
         Alert.alert('Error', `Monto insuficiente. Total: $${total.toFixed(2)} MXN`); return;
       }
     }
+    if (clienteFidelidadId && (!/^\d+$/.test(clienteFidelidadId) || Number(clienteFidelidadId)<1)) { Alert.alert('Cliente inválido','Introduce un ID válido'); return; }
     const ventaData = {
       metodoPago, usuarioId: USUARIO_ID,
+      ...(clienteFidelidadId && { clienteFidelidadId: Number(clienteFidelidadId) }),
       detalles: cartItems.map(item => ({ productoId: item.id, cantidad: item.quantity })),
       ...(metodoPago === 'efectivo' && { montoEfectivo: parseFloat(montoEfectivo), cambio }),
     };
     try {
       setLoadingVenta(true);
-      const response = await fetch(`${BASE_URL}/ventas`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify(ventaData),
-      });
-      if (!response.ok) {
-        const err = await response.text();
-        throw new Error(err || 'Error al procesar la venta');
-      }
-      const data = await response.json();
+      const { data } = await api.post('/ventas', ventaData);
       setTicket(data);
       setView('ticket');
     } catch (e) {
@@ -110,6 +105,8 @@ export default function CartScreen() {
     cartItems.forEach(item => deleteFromCart(item.id));
     setMetodoPago('efectivo');
     setMontoEfectivo('');
+    setClienteFidelidadId('');
+    setSaldoPuntos(null);
     setTicket(null);
     setView('catalog');
   };
@@ -128,6 +125,7 @@ export default function CartScreen() {
           <View style={styles.ticketCard}>
             <Text style={styles.ticketLogo}>☕ CafeSoft</Text>
             <Text style={styles.ticketFolio}>Folio: {ticket.folio}</Text>
+
             <Text style={styles.ticketFecha}>
               {ticket.fecha ? new Date(ticket.fecha).toLocaleString('es-MX') : ''}
             </Text>
@@ -255,6 +253,9 @@ export default function CartScreen() {
               </View>
 
               <View style={styles.pagoCard}>
+                <Text style={styles.pagoTitle}>HU-025 / HU-026 · Fidelidad (opcional)</Text>
+
+
                 <Text style={styles.pagoTitle}>Método de Pago</Text>
                 <View style={styles.pagoOptions}>
                   <TouchableOpacity
