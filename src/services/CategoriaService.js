@@ -1,58 +1,56 @@
-// CategoriaService.js
-import { BASE_URL } from '../config/api';
-
-const headers = {
-  'Content-Type': 'application/json',
-  'Accept': 'application/json',
-};
+import api from '../config/api';
 
 const CategoriaService = {
-
   getAll: async () => {
-    const response = await fetch(`${BASE_URL}/categorias`, { headers });
-    if (!response.ok) throw new Error('Error al obtener categorías');
-    return response.json();
+    const response =
+      await api.get('/categorias');
+
+    return response.data;
   },
 
   getActivas: async () => {
-    const response = await fetch(`${BASE_URL}/categorias/activas`, { headers });
-    if (!response.ok) throw new Error('Error al obtener categorías activas');
-    return response.json();
+    const response =
+      await api.get(
+        '/categorias/activas'
+      );
+
+    return response.data;
   },
 
   getById: async (id) => {
-    const response = await fetch(`${BASE_URL}/categorias/${id}`, { headers });
-    if (!response.ok) throw new Error('Categoría no encontrada');
-    return response.json();
+    const response =
+      await api.get(
+        `/categorias/${id}`
+      );
+
+    return response.data;
   },
 
   create: async (data) => {
-    const response = await fetch(`${BASE_URL}/categorias`, {
-      method: 'POST', headers, body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(err || 'Error al crear categoría');
-    }
-    return response.json();
+    const response =
+      await api.post(
+        '/categorias',
+        data
+      );
+
+    return response.data;
   },
 
   update: async (id, data) => {
-    const response = await fetch(`${BASE_URL}/categorias/${id}`, {
-      method: 'PUT', headers, body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(err || 'Error al actualizar categoría');
-    }
-    return response.json();
+    const response =
+      await api.put(
+        `/categorias/${id}`,
+        data
+      );
+
+    return response.data;
   },
 
   delete: async (id) => {
-    const response = await fetch(`${BASE_URL}/categorias/${id}`, {
-      method: 'DELETE', headers,
-    });
-    if (!response.ok) throw new Error('Error al eliminar categoría');
+    await api.delete(
+      `/categorias/${id}`
+    );
+
     return true;
   },
 };
