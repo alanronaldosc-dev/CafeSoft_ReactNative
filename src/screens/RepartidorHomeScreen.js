@@ -78,7 +78,7 @@ export default function RepartidorHomeScreen({ navigation }) {
           </Text>
 
           <Text style={styles.cardTitle}>
-            Mi ruta y ventas
+            Rutas en curso
           </Text>
 
           <Text style={styles.cardText}>
@@ -88,6 +88,32 @@ export default function RepartidorHomeScreen({ navigation }) {
 
           <Text style={styles.link}>
             Ver pedidos →
+          </Text>
+        </TouchableOpacity>
+
+        {/* RUTAS ASIGNADAS */}
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() =>
+            navigation.navigate('RutasAsignadas')
+          }
+          activeOpacity={0.85}
+        >
+          <Text style={styles.cardEmoji}>
+            📋
+          </Text>
+
+          <Text style={styles.cardTitle}>
+            Rutas asignadas
+          </Text>
+
+          <Text style={styles.cardText}>
+            Consulta las rutas que el encargado
+            te asignó y acéptalas para iniciar.
+          </Text>
+
+          <Text style={styles.link}>
+            Ver rutas asignadas →
           </Text>
         </TouchableOpacity>
 

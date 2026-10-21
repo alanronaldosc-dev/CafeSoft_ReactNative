@@ -195,7 +195,7 @@ export default function PedidosScreen({ route }) {
       const token = await getToken();
 
       const response = await api.get(
-        `/rutas/repartidor/${repartidorId}/activa/clientes`,
+        `/rutas/repartidor/${repartidorId}/en-curso/clientes`,
         {
           headers: {
             Authorization: token
@@ -432,6 +432,30 @@ export default function PedidosScreen({ route }) {
           return;
         }
 
+        /*
+         * Solo marcar como atendido si la entrega
+         * fue realizada en la ruta actual.
+         * Esto permite vender de nuevo a un cliente
+         * que fue reasignado a otra ruta.
+         */
+        const currentRutaId = listaClientes?.[0]?.ruta?.id;
+
+        // Si no hay ruta actual, no marcar a nadie.
+        if (currentRutaId == null) {
+          return;
+        }
+
+        // Si la entrega tiene rutaId, solo marcar si coincide.
+        if (entrega?.rutaId != null) {
+          if (entrega.rutaId !== currentRutaId) {
+            return;
+          }
+        } else {
+          // Datos antiguos sin rutaId: no marcar
+          // para evitar falsos positivos.
+          return;
+        }
+
         const cantidad = Number(
           entrega?.garrafonesEntregados ?? 0
         );
@@ -546,6 +570,20 @@ export default function PedidosScreen({ route }) {
       );
 
       setMonedero(totalEfectivo);
+
+      // Si ya se liquidó hoy, el monedero queda en $0
+      try {
+        const token2 = await getToken();
+        const liqRes = await api.get(
+          `/liquidaciones/repartidor/${repartidorId}/hoy`,
+          { headers: { Authorization: token2 ? `Bearer ${token2}` : "" } }
+        );
+        if (liqRes?.status === 200) {
+          setMonedero(0);
+        }
+      } catch (e) {
+        // 404 = no liquidado aún, no hacer nada
+      }
     } catch (error) {
       console.log(
         "Error cargando entregas de hoy:",
@@ -1616,8 +1654,9 @@ const terminarRuta = () => {
                 styles.emptySubtitle
               }
             >
-              El encargado aún no ha
-              activado una ruta para ti.
+              No tienes una ruta en curso.
+              Ve a "Rutas asignadas" y acepta
+              una ruta para comenzar.
             </Text>
           </View>
         ) : clientes.length === 0 ? (
@@ -2359,6 +2398,33 @@ const terminarRuta = () => {
                     🏦 Transferencia
                   </Text>
                 </TouchableOpacity>
+
+                 <TouchableOpacity
+                   style={[
+                     styles.metodoBtn,
+
+                     metodoCobro ===
+                       "PUNTOS" &&
+                       styles.metodoBtnActivo,
+                   ]}
+                   onPress={() =>
+                     setMetodoCobro(
+                       "PUNTOS"
+                     )
+                   }
+                 >
+                   <Text
+                     style={[
+                       styles.metodoBtnText,
+
+                       metodoCobro ===
+                         "PUNTOS" &&
+                         styles.metodoBtnTextActivo,
+                     ]}
+                   >
+                     ⭐ Puntos
+                   </Text>
+                 </TouchableOpacity>
               </View>
 
               {/* TOTAL */}

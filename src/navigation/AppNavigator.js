@@ -83,6 +83,9 @@ import ProveedorFormScreen
 import CargasRepartidor
   from '../screens/CargasRepartidor';
 
+import RutasAsignadasScreen
+  from '../screens/RutasAsignadasScreen';
+
 import PedidosScreen
   from '../screens/PedidosScreen';
 
@@ -432,6 +435,21 @@ const esRepartidor =
                 headerBackTitle:
                   'Regresar',
 
+              }}
+            />
+
+            <Stack.Screen
+              name="RutasAsignadas"
+              component={
+                RutasAsignadasScreen
+              }
+              options={{
+                headerShown:
+                  true,
+                title:
+                  'Rutas asignadas',
+                headerBackTitle:
+                  'Regresar',
               }}
             />
 
