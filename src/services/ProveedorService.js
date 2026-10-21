@@ -1,54 +1,60 @@
-// ProveedorService.js
-import { BASE_URL } from '../config/api';
-
-const headers = {
-  'Content-Type': 'application/json',
-  'Accept': 'application/json',
-};
+import api from '../config/api';
 
 const ProveedorService = {
   getAll: async () => {
-    const response = await fetch(`${BASE_URL}/proveedores`, { headers });
-    if (!response.ok) throw new Error('Error al obtener proveedores');
-    return response.json();
+    const response =
+      await api.get('/proveedores');
+
+    return response.data;
   },
 
   getActivos: async () => {
-    const data = await ProveedorService.getAll();
-    return (Array.isArray(data) ? data : []).filter((p) => p.activo !== false);
+    const data =
+      await ProveedorService.getAll();
+
+    return (
+      Array.isArray(data)
+        ? data
+        : []
+    ).filter(
+      (proveedor) =>
+        proveedor.activo !== false
+    );
   },
 
   getById: async (id) => {
-    const response = await fetch(`${BASE_URL}/proveedores/${id}`, { headers });
-    if (!response.ok) throw new Error('Proveedor no encontrado');
-    return response.json();
+    const response =
+      await api.get(
+        `/proveedores/${id}`
+      );
+
+    return response.data;
   },
 
   create: async (data) => {
-    const response = await fetch(`${BASE_URL}/proveedores`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Error al crear proveedor');
-    return response.json();
+    const response =
+      await api.post(
+        '/proveedores',
+        data
+      );
+
+    return response.data;
   },
 
   darDeBaja: async (id) => {
-    const response = await fetch(`${BASE_URL}/proveedores/${id}/baja`, {
-      method: 'PUT',
-      headers,
-    });
-    if (!response.ok) throw new Error('Error al dar de baja');
-    return response.json();
+    const response =
+      await api.put(
+        `/proveedores/${id}/baja`
+      );
+
+    return response.data;
   },
 
   delete: async (id) => {
-    const response = await fetch(`${BASE_URL}/proveedores/${id}`, {
-      method: 'DELETE',
-      headers,
-    });
-    if (!response.ok) throw new Error('Error al eliminar proveedor');
+    await api.delete(
+      `/proveedores/${id}`
+    );
+
     return true;
   },
 };

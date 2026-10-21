@@ -1,31 +1,10 @@
-// Paleta AWS Console — mismos colores que la app web
+// CafeSoft Aqua · identidad de purificadora de agua
 const colors = {
-  // Fondos
-  primary:    '#0073BB',   // Azul AWS — botones primarios, headers
-  secondary:  '#FF9900',   // Naranja AWS — acciones, badges, precios
-  background: '#0F1B2D',   // Fondo base oscuro
-  surface:    '#1A2332',   // Cards / widgets
-  surfaceAlt: '#232F3E',   // Inputs, elementos alternativos
-
-  // Textos
-  white:         '#FFFFFF',
-  black:         '#000000',
-  textPrimary:   '#FFFFFF',   // Texto principal sobre fondos oscuros
-  textSecondary: '#8D9DB6',   // Subtítulos, labels
-  textLight:     '#FFFFFF',   // Alias blanco
-  textMuted:     '#5A6B7E',   // Placeholders, deshabilitados
-
-  // Bordes
-  border: '#2D3B4E',
-
-  // Estados
-  success:      '#1D8348',
-  successLight: '#0D2B1A',
-  error:        '#E53935',
-  errorLight:   '#2B0D0D',
-  warning:      '#FF9900',
-  warningLight: '#1A1500',
-  info:         '#0073BB',
+  primary: '#008FB5', secondary: '#29C9D4', background: '#EFFAFF',
+  surface: '#FFFFFF', surfaceAlt: '#DCF4FA', white: '#FFFFFF', black: '#092B40',
+  textPrimary: '#10384C', textSecondary: '#52798B', textLight: '#FFFFFF',
+  textMuted: '#80A5B3', border: '#BCE5EF', success: '#169B78',
+  successLight: '#DDF8ED', error: '#D84555', errorLight: '#FFE9EB',
+  warning: '#E5A02C', warningLight: '#FFF5D9', info: '#008FB5',
 };
-
 export default colors;

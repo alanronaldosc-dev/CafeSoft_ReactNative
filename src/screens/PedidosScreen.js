@@ -61,9 +61,17 @@ const normalizarTexto = (texto) =>
  * en inventario cuyo nombre o tipo contiene
  * la palabra "vacío" (ej. "Garrafón vacío Ciel").
  */
-const esGarrafonVacio = (item) =>
-  normalizarTexto(item?.nombre).includes("vac") ||
-  normalizarTexto(item?.tipo).includes("vac");
+const esGarrafonVacio = (item) => {
+  const nombre = normalizarTexto(item?.nombre);
+  const tipo = normalizarTexto(item?.tipo);
+
+  return (
+    nombre.includes("vac") ||
+    tipo.includes("vac") ||
+    nombre.includes("envase") ||
+    tipo.includes("envase")
+  );
+};
 
 export default function PedidosScreen({ route }) {
   const { usuario, getToken } = useAuth();
@@ -114,12 +122,10 @@ export default function PedidosScreen({ route }) {
   const [inventarioTodos, setInventarioTodos] = useState([]);
 
   /**
-   * Cuando está activo se muestra todo el
-   * inventario en la lista de vacíos.
-   * Por defecto solo se muestran los insumos
-   * con "vacío" en su nombre o tipo.
+   * Controla si se muestra el selector de envases vacíos.
+   * Solo se muestran inventarios identificados como vacíos.
    */
-  const [mostrarTodosInsumos, setMostrarTodosInsumos] = useState(false);
+  const [mostrarSelectorVacios, setMostrarSelectorVacios] = useState(false);
 
   /**
    * Muestra el desglose por tipo de garrafón
@@ -135,6 +141,8 @@ export default function PedidosScreen({ route }) {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [clienteActivo, setClienteActivo] = useState(null);
+  const [saldoPuntosRuta, setSaldoPuntosRuta] = useState(null);
+  const [consultandoPuntos, setConsultandoPuntos] = useState(false);
 
   /**
    * Cantidad de garrafones llenos seleccionados
@@ -155,6 +163,9 @@ export default function PedidosScreen({ route }) {
   const [observaciones, setObservaciones] = useState("");
 
   const [procesando, setProcesando] = useState(false);
+
+  const [terminandoRuta, setTerminandoRuta] =
+  useState(false);
 
   // ============================================
   // CARGAR CLIENTES DE LA RUTA ACTIVA
@@ -633,6 +644,110 @@ export default function PedidosScreen({ route }) {
     }
   };
 
+
+
+  // ============================================
+// TERMINAR RUTA
+// ============================================
+
+const terminarRuta = () => {
+
+  if (!repartidorId) {
+    Alert.alert(
+      "Error",
+      "No se pudo identificar al repartidor."
+    );
+
+    return;
+  }
+
+  if (pendientes.length > 0) {
+    Alert.alert(
+      "Ruta pendiente",
+      `Todavía tienes ${pendientes.length} cliente${
+        pendientes.length === 1 ? "" : "s"
+      } pendiente${
+        pendientes.length === 1 ? "" : "s"
+      }.`
+    );
+
+    return;
+  }
+
+  Alert.alert(
+    "Terminar ruta",
+    "¿Confirmas que terminaste todas las entregas de esta ruta?",
+    [
+      {
+        text: "Cancelar",
+        style: "cancel",
+      },
+      {
+        text: "Terminar",
+        style: "destructive",
+
+        onPress: async () => {
+          try {
+
+            setTerminandoRuta(true);
+
+            const token =
+              await getToken();
+
+            const response =
+              await api.put(
+                `/rutas/repartidor/${repartidorId}/terminar`,
+                {},
+                {
+                  headers: {
+                    Authorization: token
+                      ? `Bearer ${token}`
+                      : "",
+                  },
+                }
+              );
+
+            console.log(
+              "Ruta terminada:",
+              response.data
+            );
+
+            Alert.alert(
+              "✅ Ruta terminada",
+              "La ruta fue marcada como terminada. Ya puede realizarse su cierre de ruta."
+            );
+
+            setClientes([]);
+            setAtendidos({});
+            setSinRuta(true);
+
+          } catch (error) {
+
+            console.log(
+              "Error terminando ruta:",
+              error?.response?.data ||
+                error?.message
+            );
+
+            const mensaje =
+              error?.response?.data?.error ||
+              error?.response?.data?.message ||
+              "No fue posible terminar la ruta.";
+
+            Alert.alert(
+              "No se pudo terminar",
+              mensaje
+            );
+
+          } finally {
+
+            setTerminandoRuta(false);
+          }
+        },
+      },
+    ]
+  );
+};
   // ============================================
   // ABRIR GOOGLE MAPS
   // ============================================
@@ -675,11 +790,28 @@ export default function PedidosScreen({ route }) {
   // ABRIR MODAL DE VENTA
   // ============================================
 
+  const consultarPuntosRuta = async (clienteId) => {
+    if (!clienteId) return;
+    setConsultandoPuntos(true);
+    try {
+      const { data } = await api.get(`/clientes/${clienteId}/puntos`);
+      setSaldoPuntosRuta(Number(data?.saldo ?? 0));
+    } catch (error) {
+      setSaldoPuntosRuta(null);
+      console.warn("No se pudo consultar puntos del cliente", error?.message);
+    } finally {
+      setConsultandoPuntos(false);
+    }
+  };
+
   const abrirModalVenta = (cliente) => {
+    setSaldoPuntosRuta(null);
+    consultarPuntosRuta(cliente?.id);
     setClienteActivo(cliente);
 
     setGarrafonesSeleccionados({});
     setVaciosSeleccionados({});
+    setMostrarSelectorVacios(false);
 
     setPrecioUnitario(
       String(
@@ -694,12 +826,11 @@ export default function PedidosScreen({ route }) {
   };
 
   // ============================================
-  // LISTA DE VACÍOS MOSTRADA
+  // INVENTARIO DE ENVASES VACÍOS
   // ============================================
 
-  const listaVaciosMostrada = mostrarTodosInsumos
-    ? inventarioTodos
-    : inventarioTodos.filter(esGarrafonVacio);
+  const inventarioVacios =
+    inventarioTodos.filter(esGarrafonVacio);
 
   // ============================================
   // TOTAL DE LA VENTA
@@ -822,7 +953,7 @@ export default function PedidosScreen({ route }) {
 
     const envasesVacios = [];
 
-    for (const item of listaVaciosMostrada) {
+    for (const item of inventarioVacios) {
       const valorTexto =
         vaciosSeleccionados[item.id] || "";
 
@@ -867,6 +998,11 @@ export default function PedidosScreen({ route }) {
     // ========================================
     // DATOS PARA LA API
     // ========================================
+
+    console.log(
+      "Envases vacíos seleccionados:",
+      envasesVacios
+    );
 
     const payload = {
       clienteId: Number(
@@ -918,6 +1054,7 @@ export default function PedidosScreen({ route }) {
       );
 
       setModalVisible(false);
+      const puntosVentaRuta = garrafones.reduce((total, item) => total + Number(item.cantidad || 0), 0);
 
       /*
        * IMPORTANTE:
@@ -984,6 +1121,8 @@ export default function PedidosScreen({ route }) {
           ).toFixed(2)}`,
           `Envases vacíos recibidos: ${resumenVacios}`,
           `Método: ${metodoCobro}`,
+          `HU-025 · Puntos ganados: +${puntosVentaRuta}`,
+          `HU-026 · Saldo actualizado: ${saldoPuntosRuta === null ? "consultar en ficha del cliente" : saldoPuntosRuta + puntosVentaRuta} puntos`,
         ].join("\n")
       );
     } catch (error) {
@@ -1810,6 +1949,55 @@ export default function PedidosScreen({ route }) {
             }
           )
         )}
+
+
+                {!sinRuta &&
+          clientes.length > 0 && (
+            <View
+              style={
+                styles.terminarRutaContainer
+              }
+            >
+              <TouchableOpacity
+                style={[
+                  styles.btnTerminarRuta,
+
+                  pendientes.length > 0 &&
+                    styles.btnTerminarRutaDisabled,
+                ]}
+                onPress={terminarRuta}
+                disabled={
+                  terminandoRuta ||
+                  pendientes.length > 0
+                }
+              >
+                {terminandoRuta ? (
+                  <ActivityIndicator
+                    color="#FFFFFF"
+                  />
+                ) : (
+                  <Text
+                    style={
+                      styles.btnTerminarRutaText
+                    }
+                  >
+                    ✅ Terminar ruta
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              {pendientes.length > 0 && (
+                <Text
+                  style={
+                    styles.terminarRutaAyuda
+                  }
+                >
+                  Atiende todos los clientes
+                  antes de terminar la ruta.
+                </Text>
+              )}
+            </View>
+          )}
       </ScrollView>
 
       {/* ======================================
@@ -1846,7 +2034,7 @@ export default function PedidosScreen({ route }) {
                   styles.modalTitle
                 }
               >
-                Registrar venta
+                Registrar venta · AquaRuta
               </Text>
 
               {clienteActivo && (
@@ -1861,6 +2049,16 @@ export default function PedidosScreen({ route }) {
                     }
                   </Text>
 
+                  <View style={styles.puntosRutaCard}>
+                    <Text style={styles.puntosRutaTitulo}>💧 CLUB AGUA · PUNTOS</Text>
+                    <Text style={styles.puntosRutaSaldo}>
+                      {consultandoPuntos ? "Consultando saldo…" : saldoPuntosRuta === null ? "Saldo no disponible" : `${saldoPuntosRuta} puntos disponibles`}
+                    </Text>
+                    <Text style={styles.puntosRutaNota}>Cada garrafón vendido suma 1 punto al cliente. Se acredita al confirmar la venta.</Text>
+                    <TouchableOpacity onPress={() => consultarPuntosRuta(clienteActivo?.id)}>
+                      <Text style={styles.puntosRutaActualizar}>↻ Actualizar puntos</Text>
+                    </TouchableOpacity>
+                  </View>
                   <Text
                     style={
                       styles.modalDomicilio
@@ -2025,12 +2223,12 @@ export default function PedidosScreen({ route }) {
                 Envases vacíos recibidos
               </Text>
 
-              {/* Cabecera desplegable */}
+              {/* Selector de envases vacíos */}
               <TouchableOpacity
                 style={styles.vaciosHeader}
                 onPress={() =>
-                  setMostrarTodosInsumos(
-                    !mostrarTodosInsumos
+                  setMostrarSelectorVacios(
+                    !mostrarSelectorVacios
                   )
                 }
                 activeOpacity={0.8}
@@ -2038,21 +2236,21 @@ export default function PedidosScreen({ route }) {
                 <Text
                   style={styles.vaciosHeaderTexto}
                 >
-                  {mostrarTodosInsumos
-                    ? "▲ Ocultar insumos"
+                  {mostrarSelectorVacios
+                    ? "▲ Ocultar envases vacíos"
                     : "▼ Seleccionar envases vacíos"}
                 </Text>
               </TouchableOpacity>
 
-              {mostrarTodosInsumos && (
-                inventarioTodos.length === 0 ? (
+              {mostrarSelectorVacios && (
+                inventarioVacios.length === 0 ? (
                   <View style={styles.modalAviso}>
                     <Text style={styles.modalAvisoTexto}>
-                      No hay insumos registrados en inventario.
+                      No hay inventarios de garrafones vacíos registrados.
                     </Text>
                   </View>
                 ) : (
-                  inventarioTodos.map((item) => (
+                  inventarioVacios.map((item) => (
                     <View
                       key={item.id}
                       style={styles.filaGarrafon}
@@ -2293,6 +2491,11 @@ export default function PedidosScreen({ route }) {
 // ============================================
 
 const styles = StyleSheet.create({
+  puntosRutaCard: { backgroundColor: '#E6F8FA', borderColor: '#7ADCE3', borderWidth: 1, borderRadius: 18, padding: 16, marginVertical: 12 },
+  puntosRutaTitulo: { color: '#087C90', fontWeight: '900', letterSpacing: 1.3, fontSize: 12 },
+  puntosRutaSaldo: { color: '#07556B', fontWeight: '900', fontSize: 23, marginTop: 6 },
+  puntosRutaNota: { color: '#386C7A', fontSize: 12, marginTop: 5 },
+  puntosRutaActualizar: { color: '#008EAE', fontWeight: '700', marginTop: 10 },
   container: {
     flex: 1,
     backgroundColor:
@@ -3080,4 +3283,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 15,
   },
+
+  
 });

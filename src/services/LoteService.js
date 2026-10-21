@@ -1,42 +1,28 @@
-// LoteService.js
-// Capa de comunicación con /api/lotes
-// Los lotes son los "registros de entrada" de insumos al inventar
-
-import { BASE_URL } from '../config/api';
-
-const headers = {
-  'Content-Type': 'application/json',
-  'Accept': 'application/json',
-};
+import api from '../config/api';
 
 const LoteService = {
-
-  // GET /api/lotes — todos los lotes registrados
   getAll: async () => {
-    const response = await fetch(`${BASE_URL}/lotes`, { headers });
-    if (!response.ok) throw new Error('Error al obtener lotes');
-    return response.json();
+    const response =
+      await api.get('/lotes');
+
+    return response.data;
   },
 
-  // POST /api/lotes — registrar un nuevo lote
-  // Body: { insumoId, cantidad, fechaCaducidad, observaciones }
   create: async (data) => {
-    const response = await fetch(`${BASE_URL}/lotes`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Error al registrar lote');
-    return response.json();
+    const response =
+      await api.post(
+        '/lotes',
+        data
+      );
+
+    return response.data;
   },
 
-  // DELETE /api/lotes/:id
   delete: async (id) => {
-    const response = await fetch(`${BASE_URL}/lotes/${id}`, {
-      method: 'DELETE',
-      headers,
-    });
-    if (!response.ok) throw new Error('Error al eliminar lote');
+    await api.delete(
+      `/lotes/${id}`
+    );
+
     return true;
   },
 };

@@ -1,60 +1,45 @@
-// ProductoService.js
-// Comunicación con /api/productos
-// Los productos usan insumos del inventario (no de /api/insumos)
-
-import { BASE_URL } from '../config/api';
-
-const headers = {
-  'Content-Type': 'application/json',
-  'Accept': 'application/json',
-};
+import api from '../config/api';
 
 const ProductoService = {
-
-  // GET /api/productos
   getAll: async () => {
-    const response = await fetch(`${BASE_URL}/productos`, { headers });
-    if (!response.ok) throw new Error('Error al obtener productos');
-    return response.json();
+    const response =
+      await api.get('/productos');
+
+    return response.data;
   },
 
-  // GET /api/productos/:id
   getById: async (id) => {
-    const response = await fetch(`${BASE_URL}/productos/${id}`, { headers });
-    if (!response.ok) throw new Error('Producto no encontrado');
-    return response.json();
+    const response =
+      await api.get(`/productos/${id}`);
+
+    return response.data;
   },
 
-  // POST /api/productos
-  // Body: { nombre, precio, descripcion, imagen, insumos: [{ insumoId, cantidad, unidadMedida }] }
   create: async (data) => {
-    const response = await fetch(`${BASE_URL}/productos`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Error al crear producto');
-    return response.json();
+    const response =
+      await api.post(
+        '/productos',
+        data
+      );
+
+    return response.data;
   },
 
-  // PUT /api/productos/:id
   update: async (id, data) => {
-    const response = await fetch(`${BASE_URL}/productos/${id}`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Error al actualizar producto');
-    return response.json();
+    const response =
+      await api.put(
+        `/productos/${id}`,
+        data
+      );
+
+    return response.data;
   },
 
-  // DELETE /api/productos/:id
   delete: async (id) => {
-    const response = await fetch(`${BASE_URL}/productos/${id}`, {
-      method: 'DELETE',
-      headers,
-    });
-    if (!response.ok) throw new Error('Error al eliminar producto');
+    await api.delete(
+      `/productos/${id}`
+    );
+
     return true;
   },
 };

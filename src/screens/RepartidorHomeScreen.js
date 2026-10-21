@@ -23,14 +23,14 @@ export default function RepartidorHomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.emoji}>🚚</Text>
+        <Text style={styles.emoji}>💧</Text>
 
         <Text style={styles.title}>
-          Panel del repartidor
+          AquaRuta · Repartidor
         </Text>
 
         <Text style={styles.subtitle}>
-          Hola, {usuario?.nombre || 'Repartidor'}
+          Agua pura, entregas seguras · {usuario?.nombre || 'Repartidor'}
         </Text>
       </View>
 
@@ -74,11 +74,11 @@ export default function RepartidorHomeScreen({ navigation }) {
           activeOpacity={0.85}
         >
           <Text style={styles.cardEmoji}>
-            📦
+            🚛
           </Text>
 
           <Text style={styles.cardTitle}>
-            Pedidos por entregar
+            Mi ruta y ventas
           </Text>
 
           <Text style={styles.cardText}>

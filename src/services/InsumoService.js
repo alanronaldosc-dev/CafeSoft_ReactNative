@@ -1,59 +1,45 @@
-// InsumoService.js
-// Capa de comunicación con la API. Equivalente a un Repository en Laravel.
-// Todas las llamadas HTTP a /insumos van aquí centralizadas.
-
-import { BASE_URL } from '../config/api';
-
-const headers = {
-  'Content-Type': 'application/json',
-  'Accept': 'application/json',
-};
+import api from '../config/api';
 
 const InsumoService = {
-
-  // GET /insumos — equivalente a Insumo::all()
   getAll: async () => {
-    const response = await fetch(`${BASE_URL}/insumos`, { headers });
-    if (!response.ok) throw new Error('Error al obtener insumos');
-    return response.json();
+    const response =
+      await api.get('/insumos');
+
+    return response.data;
   },
 
-  // GET /insumos/:id — equivalente a Insumo::findOrFail($id)
   getById: async (id) => {
-    const response = await fetch(`${BASE_URL}/insumos/${id}`, { headers });
-    if (!response.ok) throw new Error('Insumo no encontrado');
-    return response.json();
+    const response =
+      await api.get(`/insumos/${id}`);
+
+    return response.data;
   },
 
-  // POST /insumos — equivalente a Insumo::create($data)
   create: async (data) => {
-    const response = await fetch(`${BASE_URL}/insumos`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Error al crear insumo');
-    return response.json();
+    const response =
+      await api.post(
+        '/insumos',
+        data
+      );
+
+    return response.data;
   },
 
-  // PUT /insumos/:id — equivalente a $insumo->update($data)
   update: async (id, data) => {
-    const response = await fetch(`${BASE_URL}/insumos/${id}`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Error al actualizar insumo');
-    return response.json();
+    const response =
+      await api.put(
+        `/insumos/${id}`,
+        data
+      );
+
+    return response.data;
   },
 
-  // DELETE /insumos/:id — equivalente a $insumo->delete()
   delete: async (id) => {
-    const response = await fetch(`${BASE_URL}/insumos/${id}`, {
-      method: 'DELETE',
-      headers,
-    });
-    if (!response.ok) throw new Error('Error al eliminar insumo');
+    await api.delete(
+      `/insumos/${id}`
+    );
+
     return true;
   },
 };

@@ -1,59 +1,53 @@
-// InventarioService.js
-// Comunicación con /api/inventario
-// El inventario es la fuente de insumos disponibles para los productos
-
-import { BASE_URL } from '../config/api';
-
-const headers = {
-  'Content-Type': 'application/json',
-  'Accept': 'application/json',
-};
+import api from '../config/api';
 
 const InventarioService = {
 
   // GET /api/inventario
   getAll: async () => {
-    const response = await fetch(`${BASE_URL}/inventario`, { headers });
-    if (!response.ok) throw new Error('Error al obtener inventario');
-    return response.json();
+    const response =
+      await api.get('/inventario');
+
+    return response.data;
   },
 
   // GET /api/inventario/:id
   getById: async (id) => {
-    const response = await fetch(`${BASE_URL}/inventario/${id}`, { headers });
-    if (!response.ok) throw new Error('Registro no encontrado');
-    return response.json();
+    const response =
+      await api.get(
+        `/inventario/${id}`
+      );
+
+    return response.data;
   },
 
   // POST /api/inventario
   create: async (data) => {
-    const response = await fetch(`${BASE_URL}/inventario`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Error al crear registro');
-    return response.json();
+    const response =
+      await api.post(
+        '/inventario',
+        data
+      );
+
+    return response.data;
   },
 
   // PUT /api/inventario/:id
   update: async (id, data) => {
-    const response = await fetch(`${BASE_URL}/inventario/${id}`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Error al actualizar registro');
-    return response.json();
+    const response =
+      await api.put(
+        `/inventario/${id}`,
+        data
+      );
+
+    return response.data;
   },
 
   // DELETE /api/inventario/:id
   delete: async (id) => {
-    const response = await fetch(`${BASE_URL}/inventario/${id}`, {
-      method: 'DELETE',
-      headers,
-    });
-    if (!response.ok) throw new Error('Error al eliminar registro');
+    await api.delete(
+      `/inventario/${id}`
+    );
+
     return true;
   },
 };

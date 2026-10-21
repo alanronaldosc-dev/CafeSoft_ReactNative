@@ -1,4 +1,5 @@
-import React, { useCallback, useState } from "react";
+
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -8,29 +9,56 @@ import {
   Text,
   TouchableOpacity,
   View,
+  StatusBar,
 } from "react-native";
 
 import { useFocusEffect } from "@react-navigation/native";
-
 import api from "../config/api";
 import { useAuth } from "../context/AuthContext";
 
-function CargasRepartidor({ navigation }) {
-  // ============================================
-  // USUARIO AUTENTICADO
-  // ============================================
+const COLORS = {
+  primary: "#008FB5",
+  turquoise: "#29C9D4",
+  deep: "#07556B",
+  ice: "#E6F8FA",
+  background: "#EFFAFF",
+  white: "#FFFFFF",
+  text: "#173C4A",
+  muted: "#668491",
+  border: "#D3ECF2",
+  success: "#13856E",
+  successBg: "#E0F7EF",
+  warning: "#B77B17",
+  warningBg: "#FFF5D9",
+  danger: "#B83D4B",
+  dangerBg: "#FFF0F1",
+};
 
+export default function CargasRepartidor({ navigation }) {
   const { usuario, cerrarSesion } = useAuth();
 
-  // ============================================
-  // ESTADOS
-  // ============================================
+  const repartidorId =
+    usuario?.id ??
+    usuario?.idUsuario ??
+    usuario?.id_usuario;
+
+  const nombreUsuario =
+    usuario?.nombre || usuario?.name || "Repartidor";
+
+  const emailUsuario =
+    usuario?.email || usuario?.correo || "Sin correo";
+
+  const rolUsuario =
+    usuario?.rol || usuario?.role || "Repartidor";
 
   const [cargas, setCargas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [actualizando, setActualizando] = useState(false);
   const [aceptandoId, setAceptandoId] = useState(null);
   const [error, setError] = useState("");
+
+  // Evita solicitudes duplicadas por doble pulsación.
+  const aceptacionEnProceso = useRef(false);
 
   const getEstadoCarga = (carga) => {
     const estado =
@@ -42,47 +70,95 @@ function CargasRepartidor({ navigation }) {
 
     const texto = String(estado).toUpperCase();
 
-    if (texto.includes("TRANSITO") || texto.includes("TRANSIT") || texto.includes("EN_TRAMITE")) {
+    if (
+      texto.includes("TRANSITO") ||
+      texto.includes("TRÁNSITO") ||
+      texto.includes("TRANSIT")
+    ) {
       return "EN TRÁNSITO";
-    }
-
-    if (texto.includes("ACEPT") || texto.includes("CONFIRM") || texto.includes("RECIB") || texto.includes("ASIGN")) {
-      return "PENDIENTE";
     }
 
     return texto || "PENDIENTE";
   };
 
-  // ============================================
-  // OBTENER ID DEL REPARTIDOR
-  // ============================================
+  const formatearFecha = (fecha) => {
+    if (!fecha) return "Sin fecha";
 
-  const repartidorId =
-    usuario?.id ??
-    usuario?.idUsuario ??
-    usuario?.id_usuario;
+    try {
+      const valor = new Date(fecha);
 
-  const nombreUsuario = usuario?.nombre || usuario?.name || "Repartidor";
-  const emailUsuario = usuario?.email || usuario?.correo || "sin-email@cafesoft.com";
-  const rolUsuario = usuario?.rol || usuario?.role || "Repartidor";
+      if (Number.isNaN(valor.getTime())) {
+        return String(fecha);
+      }
 
-const handleLogout = async () => {
-  await cerrarSesion();
-};
+      return valor.toLocaleString("es-MX", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    } catch {
+      return String(fecha);
+    }
+  };
 
-  // ============================================
-  // CARGAR CARGAS PENDIENTES
-  // ============================================
+  const obtenerNombreGarrafon = (carga) =>
+    carga?.inventarioNombre ||
+    carga?.tipoGarrafon ||
+    carga?.inventario?.nombre ||
+    "Garrafón";
+
+  const obtenerUnidad = (carga) =>
+    carga?.unidadMedida ||
+    carga?.inventario?.unidadMedida ||
+    "unidades";
+
+  const obtenerMensajeError = (err) => {
+    const datos = err?.response?.data;
+
+    if (typeof datos === "string") {
+      return datos;
+    }
+
+    return (
+      datos?.message ||
+      datos?.mensaje ||
+      datos?.error ||
+      err?.message ||
+      "Error desconocido"
+    );
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      "Cerrar sesión",
+      "¿Deseas salir de AquaRuta?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+        {
+          text: "Salir",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await cerrarSesion();
+            } catch {
+              Alert.alert(
+                "Error",
+                "No se pudo cerrar la sesión."
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const cargarCargas = async (esActualizacion = false) => {
     if (!repartidorId) {
-      setError(
-        "No se pudo identificar al repartidor. Cierra sesión e inicia nuevamente."
-      );
-
+      setError("No se pudo identificar al repartidor.");
       setCargando(false);
       setActualizando(false);
-
       return;
     }
 
@@ -95,24 +171,9 @@ const handleLogout = async () => {
 
       setError("");
 
-      console.log(
-        "Consultando cargas del repartidor:",
-        repartidorId
-      );
-
       const response = await api.get(
         `/cargas/repartidor/${repartidorId}/pendientes`
       );
-
-      console.log(
-        "Respuesta cargas pendientes:",
-        response.data
-      );
-
-      // ==========================================
-      // LA API PUEDE DEVOLVER DIRECTAMENTE
-      // EL ARRAY O UN OBJETO CON data/cargas
-      // ==========================================
 
       const respuesta = response.data;
 
@@ -126,1219 +187,1124 @@ const handleLogout = async () => {
         listaCargas = respuesta.cargas;
       }
 
-      const cargasFiltradas = listaCargas.filter((carga) => {
+      const pendientes = listaCargas.filter((carga) => {
         const estado = getEstadoCarga(carga);
-        return !estado.includes("TRANSITO");
+
+        return !estado.includes("TRÁNSITO");
       });
 
-      setCargas(cargasFiltradas);
-
+      setCargas(pendientes);
     } catch (err) {
-      console.error(
-        "Error al cargar cargas pendientes:",
-        err
-      );
+      console.error("Error al cargar las cargas:", err);
 
-      console.error(
-        "Respuesta del servidor:",
-        err.response?.data
-      );
+      setError(obtenerMensajeError(err));
 
-      const mensaje =
-        err.response?.data?.message ||
-        err.response?.data?.mensaje ||
-        err.response?.data?.error ||
-        "No se pudieron cargar las cargas pendientes.";
-
-      setError(mensaje);
-
-      // Si es una actualización manual,
-      // no borramos las cargas que ya estaban visibles.
       if (!esActualizacion) {
         setCargas([]);
       }
-
     } finally {
       setCargando(false);
       setActualizando(false);
     }
   };
 
-  // ============================================
-  // CARGAR AL ENTRAR A LA PANTALLA
-  // ============================================
-
   useFocusEffect(
     useCallback(() => {
       cargarCargas();
-
-      return () => {};
     }, [repartidorId])
   );
 
-  // ============================================
-  // ACEPTAR CARGA
-  // ============================================
-
   const aceptarCarga = (carga) => {
+    if (aceptacionEnProceso.current) return;
+
     Alert.alert(
-      "Aceptar carga",
-      `¿Confirmas que recibiste ${carga.cantidad} ${
-        carga.unidadMedida || "unidades"
-      } de ${
-        carga.inventarioNombre ||
-        carga.tipoGarrafon ||
-        carga.inventario?.nombre ||
-        "garrafones"
-      }?`,
+      "Confirmar recepción",
+      `¿Recibiste ${carga.cantidad} ${obtenerUnidad(
+        carga
+      )} de ${obtenerNombreGarrafon(carga)}?`,
       [
         {
           text: "Cancelar",
           style: "cancel",
         },
         {
-          text: "Aceptar",
+          text: "Aceptar carga",
           onPress: () => confirmarAceptacion(carga),
         },
       ]
     );
   };
 
-  // ============================================
-  // CONFIRMAR ACEPTACIÓN EN LA API
-  // ============================================
-
   const confirmarAceptacion = async (carga) => {
+    if (aceptacionEnProceso.current) return;
+
+    aceptacionEnProceso.current = true;
+    setAceptandoId(carga.id);
+    setError("");
+
     try {
-      setAceptandoId(carga.id);
-      setError("");
-
-      console.log(
-        "Aceptando carga:",
-        carga.id
-      );
-
-      const response = await api.put(
-        `/cargas/${carga.id}/aceptar`
-      );
-
-      console.log(
-        "Respuesta aceptar carga:",
-        response.data
-      );
+      await api.put(`/cargas/${carga.id}/aceptar`);
 
       Alert.alert(
-        "Carga aceptada",
-        "La carga fue aceptada correctamente y ahora se encuentra en tránsito.",
+        "¡Carga recibida!",
+        "Tu carga fue aceptada correctamente y ahora está en tránsito.",
         [
           {
             text: "Continuar",
-            onPress: () => {
-              cargarCargas(true);
-            },
+            onPress: () => cargarCargas(true),
           },
         ]
       );
-
     } catch (err) {
-      console.error(
-        "Error al aceptar carga:",
-        err
-      );
-
-      console.error(
-        "Respuesta del servidor:",
-        err.response?.data
-      );
-
-      const mensaje =
-        err.response?.data?.message ||
-        err.response?.data?.mensaje ||
-        err.response?.data?.error ||
-        "No se pudo aceptar la carga.";
-
-      Alert.alert(
-        "Error",
-        mensaje
-      );
-
+      Alert.alert("No se pudo aceptar", obtenerMensajeError(err));
     } finally {
+      aceptacionEnProceso.current = false;
       setAceptandoId(null);
     }
   };
 
-  // ============================================
-  // FORMATEAR FECHA
-  // ============================================
-
-  const formatearFecha = (fecha) => {
-    if (!fecha) {
-      return "Sin fecha";
-    }
-
-    try {
-      return new Date(fecha).toLocaleString(
-        "es-MX",
-        {
-          dateStyle: "medium",
-          timeStyle: "short",
-        }
-      );
-    } catch {
-      return String(fecha);
-    }
-  };
-
-  // ============================================
-  // OBTENER NOMBRE DEL INVENTARIO
-  // ============================================
-
-  const obtenerNombreGarrafon = (carga) => {
-    return (
-      carga.inventarioNombre ||
-      carga.tipoGarrafon ||
-      carga.inventario?.nombre ||
-      "Garrafón"
-    );
-  };
-
-  // ============================================
-  // OBTENER UNIDAD
-  // ============================================
-
-  const obtenerUnidad = (carga) => {
-    return (
-      carga.unidadMedida ||
-      carga.inventario?.unidadMedida ||
-      "unidades"
-    );
-  };
-
-  // ============================================
-  // SI NO SE IDENTIFICÓ EL USUARIO
-  // ============================================
-
   if (!repartidorId) {
     return (
-      <View style={styles.contenedor}>
-        <View style={styles.header}>
-          <Text style={styles.iconoHeader}>
-            🚚
-          </Text>
-
-          <View style={styles.headerTexto}>
-            <Text style={styles.titulo}>
-              Mis cargas
-            </Text>
-
-            <Text style={styles.subtitulo}>
-              Carga inicial de garrafones
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.errorCard}>
-          <Text style={styles.errorIcono}>
-            ⚠️
-          </Text>
-
-          <Text style={styles.errorTitulo}>
-            No se pudo identificar al repartidor
-          </Text>
-
-          <Text style={styles.errorTexto}>
-            La sesión actual no contiene el
-            identificador del usuario.
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-  // ============================================
-  // PANTALLA DE CARGA
-  // ============================================
-
-  if (cargando) {
-    return (
-      <View style={styles.cargandoContainer}>
-        <ActivityIndicator
-          size="large"
-          color="#7a4e39"
+      <View style={styles.centerContainer}>
+        <StatusBar
+          backgroundColor={COLORS.deep}
+          barStyle="light-content"
         />
 
-        <Text style={styles.cargandoTexto}>
-          Cargando tus cargas...
+        <Text style={styles.centerIcon}>💧</Text>
+
+        <Text style={styles.centerTitle}>
+          Sesión no disponible
+        </Text>
+
+        <Text style={styles.centerDescription}>
+          No se pudo identificar al repartidor.
+          Cierra sesión e inicia nuevamente.
         </Text>
       </View>
     );
   }
 
-  // ============================================
-  // RENDER PRINCIPAL
-  // ============================================
+  if (cargando) {
+    return (
+      <View style={styles.centerContainer}>
+        <StatusBar
+          backgroundColor={COLORS.deep}
+          barStyle="light-content"
+        />
+
+        <View style={styles.loadingCircle}>
+          <Text style={styles.loadingIcon}>💧</Text>
+        </View>
+
+        <ActivityIndicator
+          size="large"
+          color={COLORS.primary}
+        />
+
+        <Text style={styles.centerTitle}>
+          AquaRuta
+        </Text>
+
+        <Text style={styles.centerDescription}>
+          Preparando tus cargas...
+        </Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.contenedor}>
+    <View style={styles.container}>
+      <StatusBar
+        backgroundColor={COLORS.deep}
+        barStyle="light-content"
+      />
 
-      {/* ========================================
-          ENCABEZADO
-      ======================================== */}
+      {/* ENCABEZADO */}
 
       <View style={styles.header}>
-
-        <View style={styles.iconoHeaderContainer}>
-          <Text style={styles.iconoHeader}>
-            🚚
-          </Text>
-        </View>
-
-        <View style={styles.headerTexto}>
-          <Text style={styles.titulo}>
-            Mis cargas
-          </Text>
-
-          <Text style={styles.subtitulo}>
-            Carga inicial de garrafones
-          </Text>
-        </View>
-
-      </View>
-
-      {/* ========================================
-          PERFIL DEL REPARTIDOR
-      ======================================== */}
-
-      <View style={styles.perfilCard}>
-        <View style={styles.perfilHeader}>
-          <View style={styles.perfilAvatarContainer}>
-            <Text style={styles.perfilAvatarText}>
-              {nombreUsuario.charAt(0).toUpperCase()}
-            </Text>
+        <View style={styles.brandRow}>
+          <View style={styles.brandIcon}>
+            <Text style={styles.brandEmoji}>💧</Text>
           </View>
 
-          <View style={styles.perfilInfo}>
-            <Text style={styles.perfilNombre}>{nombreUsuario}</Text>
-            <Text style={styles.perfilRol}>{rolUsuario}</Text>
-            <Text style={styles.perfilEmail}>{emailUsuario}</Text>
+          <View style={styles.brandText}>
+            <Text style={styles.brandTitle}>
+              AquaRuta
+            </Text>
+
+            <Text style={styles.brandSubtitle}>
+              Purificadora · Repartidores
+            </Text>
           </View>
 
           <TouchableOpacity
             style={styles.logoutButton}
             onPress={handleLogout}
           >
-            <Text style={styles.logoutButtonText}>Salir</Text>
+            <Text style={styles.logoutText}>
+              Salir
+            </Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.perfilResumen}>
-          <View style={styles.resumenMiniCard}>
-            <Text style={styles.resumenMiniNumero}>{cargas.length}</Text>
-            <Text style={styles.resumenMiniLabel}>Pendientes</Text>
-          </View>
-
-          <View style={styles.resumenMiniCard}>
-            <Text style={styles.resumenMiniNumero}>1</Text>
-            <Text style={styles.resumenMiniLabel}>Ruta</Text>
-          </View>
-
-          <View style={styles.resumenMiniCard}>
-            <Text style={styles.resumenMiniNumero}>✓</Text>
-            <Text style={styles.resumenMiniLabel}>Listo</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* ========================================
-          SALUDO
-      ======================================== */}
-
-      <View style={styles.bienvenida}>
-        <Text style={styles.bienvenidaTitulo}>
-          Hola, {nombreUsuario} 👋
-        </Text>
-
-        <Text style={styles.bienvenidaTexto}>
-          Revisa la carga asignada por el encargado
-          antes de iniciar tu ruta.
-        </Text>
-      </View>
-
-      {/* ========================================
-          ERROR
-      ======================================== */}
-
-      {error !== "" && (
-        <View style={styles.errorCard}>
-          <Text style={styles.errorIcono}>
-            ⚠️
+        <View style={styles.headerBottom}>
+          <Text style={styles.headerGreeting}>
+            Hola, {nombreUsuario} 👋
           </Text>
 
-          <View style={styles.errorContenido}>
-            <Text style={styles.errorTitulo}>
-              Ocurrió un problema
-            </Text>
-
-            <Text style={styles.errorTexto}>
-              {error}
-            </Text>
-
-            <TouchableOpacity
-              style={styles.reintentarBoton}
-              onPress={() => cargarCargas()}
-            >
-              <Text style={styles.reintentarTexto}>
-                🔄 Intentar nuevamente
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.headerDescription}>
+            Tu agua, tu ruta, tus entregas.
+          </Text>
         </View>
-      )}
-
-      {/* ========================================
-          LISTA DE CARGAS
-      ======================================== */}
+      </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContenido}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={actualizando}
             onRefresh={() => cargarCargas(true)}
-            colors={["#7a4e39"]}
-            tintColor="#7a4e39"
+            colors={[COLORS.primary, COLORS.turquoise]}
+            tintColor={COLORS.primary}
           />
         }
-        showsVerticalScrollIndicator={false}
       >
+        {/* PERFIL DEL REPARTIDOR */}
 
-        {/* ======================================
-            CONTADOR
-        ====================================== */}
+        <View style={styles.profileCard}>
+          <View style={styles.profileTop}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {nombreUsuario.charAt(0).toUpperCase()}
+              </Text>
+            </View>
 
-        <View style={styles.resumenCard}>
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>
+                {nombreUsuario}
+              </Text>
 
-          <View>
-            <Text style={styles.resumenTitulo}>
-              Cargas pendientes
+              <Text style={styles.profileRole}>
+                {String(rolUsuario)}
+              </Text>
+
+              <Text
+                style={styles.profileEmail}
+                numberOfLines={1}
+              >
+                {emailUsuario}
+              </Text>
+            </View>
+
+            <View style={styles.activeBadge}>
+              <Text style={styles.activeText}>
+                ● Activo
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>
+                {cargas.length}
+              </Text>
+
+              <Text style={styles.statLabel}>
+                Pendientes
+              </Text>
+            </View>
+
+            <View style={styles.statDivider} />
+
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>
+                🚚
+              </Text>
+
+              <Text style={styles.statLabel}>
+                Mi ruta
+              </Text>
+            </View>
+
+            <View style={styles.statDivider} />
+
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>
+                💧
+              </Text>
+
+              <Text style={styles.statLabel}>
+                AquaRuta
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* MENSAJE DE BIENVENIDA */}
+
+        <View style={styles.welcomeCard}>
+          <View style={styles.welcomeIcon}>
+            <Text style={styles.welcomeEmoji}>
+              🚰
+            </Text>
+          </View>
+
+          <View style={styles.welcomeContent}>
+            <Text style={styles.welcomeTitle}>
+              ¡Prepara tu ruta!
             </Text>
 
-            <Text style={styles.resumenSubtitulo}>
+            <Text style={styles.welcomeDescription}>
+              Verifica los garrafones asignados
+              antes de salir de la purificadora.
+            </Text>
+          </View>
+        </View>
+
+        {/* ERRORES */}
+
+        {error !== "" && (
+          <View style={styles.errorCard}>
+            <Text style={styles.errorTitle}>
+              ⚠️ No se pudieron consultar las cargas
+            </Text>
+
+            <Text style={styles.errorDescription}>
+              {error}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => cargarCargas()}
+            >
+              <Text style={styles.retryText}>
+                Intentar nuevamente
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* TÍTULO DE LA LISTA */}
+
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>
+              Mis cargas
+            </Text>
+
+            <Text style={styles.sectionSubtitle}>
               Asignaciones por confirmar
             </Text>
           </View>
 
-          <View style={styles.contador}>
-            <Text style={styles.contadorTexto}>
+          <View style={styles.counter}>
+            <Text style={styles.counterText}>
               {cargas.length}
             </Text>
           </View>
-
         </View>
 
-        {/* ======================================
-            SIN CARGAS
-        ====================================== */}
+        {/* LISTA DE CARGAS */}
 
         {cargas.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <View style={styles.emptyIconContainer}>
+              <Text style={styles.emptyIcon}>
+                📦
+              </Text>
+            </View>
 
-          <View style={styles.vacioCard}>
-
-            <Text style={styles.vacioIcono}>
-              📦
+            <Text style={styles.emptyTitle}>
+              Todo está al día
             </Text>
 
-            <Text style={styles.vacioTitulo}>
-              No tienes cargas pendientes
-            </Text>
-
-            <Text style={styles.vacioTexto}>
-              Cuando el encargado registre una
-              carga para ti, aparecerá aquí para
-              que puedas confirmarla.
+            <Text style={styles.emptyDescription}>
+              No tienes cargas pendientes.
+              Cuando el encargado te asigne una
+              nueva carga, aparecerá aquí.
             </Text>
 
             <TouchableOpacity
-              style={styles.actualizarBoton}
+              style={styles.refreshButton}
               onPress={() => cargarCargas(true)}
               disabled={actualizando}
             >
-              <Text style={styles.actualizarTexto}>
-                🔄 Actualizar
+              <Text style={styles.refreshText}>
+                ↻ Actualizar cargas
               </Text>
             </TouchableOpacity>
-
           </View>
-
         ) : (
-
           cargas.map((carga) => {
-
             const estaAceptando =
               aceptandoId === carga.id;
-            const estadoCarga = getEstadoCarga(carga);
+
+            const estadoCarga =
+              getEstadoCarga(carga);
+
+            const enTransito =
+              estadoCarga.includes("TRÁNSITO");
 
             return (
               <View
-                key={carga.id}
-                style={styles.cargaCard}
+                key={String(carga.id)}
+                style={styles.loadCard}
               >
-
-                {/* ==============================
-                    CABECERA DE LA CARGA
-                ============================== */}
-
-                <View style={styles.cargaHeader}>
-
-                  <View>
-                    <Text style={styles.cargaTitulo}>
-                      🚰 Carga #{carga.id}
-                    </Text>
-
-                    <Text style={styles.cargaFecha}>
-                      {formatearFecha(
-                        carga.fechaHora
-                      )}
-                    </Text>
-                  </View>
-
-                  <View
-                    style={
-                      estadoCarga.includes("TRÁNSITO") || estadoCarga.includes("TRANSITO")
-                        ? styles.estadoTransito
-                        : styles.estadoPendiente
-                    }
-                  >
-                    <Text
-                      style={
-                        estadoCarga.includes("TRÁNSITO") || estadoCarga.includes("TRANSITO")
-                          ? styles.estadoTransitoTexto
-                          : styles.estadoPendienteTexto
-                      }
-                    >
-                      {estadoCarga}
-                    </Text>
-                  </View>
-
-                </View>
-
-                {/* ==============================
-                    SEPARADOR
-                ============================== */}
-
-                <View style={styles.separador} />
-
-                {/* ==============================
-                    INFORMACIÓN
-                ============================== */}
-
-                <View style={styles.informacionCarga}>
-
-                  <View style={styles.datoFila}>
-
-                    <View style={styles.datoIcono}>
-                      <Text>
+                <View style={styles.loadHeader}>
+                  <View style={styles.loadTitleGroup}>
+                    <View style={styles.loadIconBox}>
+                      <Text style={styles.loadIcon}>
                         💧
                       </Text>
                     </View>
 
-                    <View style={styles.datoContenido}>
-                      <Text style={styles.datoEtiqueta}>
-                        Tipo de garrafón
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.loadTitle}>
+                        Carga #{carga.id}
                       </Text>
 
-                      <Text style={styles.datoValor}>
-                        {obtenerNombreGarrafon(carga)}
+                      <Text style={styles.loadDate}>
+                        {formatearFecha(
+                          carga.fechaHora
+                        )}
                       </Text>
                     </View>
-
                   </View>
 
-                  <View style={styles.datoFila}>
-
-                    <View style={styles.datoIcono}>
-                      <Text>
-                        🔢
-                      </Text>
-                    </View>
-
-                    <View style={styles.datoContenido}>
-                      <Text style={styles.datoEtiqueta}>
-                        Cantidad asignada
-                      </Text>
-
-                      <Text style={styles.cantidadValor}>
-                        {carga.cantidad}{" "}
-                        {obtenerUnidad(carga)}
-                      </Text>
-                    </View>
-
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      enTransito
+                        ? styles.statusTransit
+                        : styles.statusPending,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.statusText,
+                        enTransito
+                          ? styles.statusTransitText
+                          : styles.statusPendingText,
+                      ]}
+                    >
+                      {estadoCarga}
+                    </Text>
                   </View>
-
-                  <View style={styles.datoFila}>
-
-                    <View style={styles.datoIcono}>
-                      <Text>
-                        👤
-                      </Text>
-                    </View>
-
-                    <View style={styles.datoContenido}>
-                      <Text style={styles.datoEtiqueta}>
-                        Repartidor
-                      </Text>
-
-                      <Text style={styles.datoValor}>
-                        {carga.repartidorNombre ||
-                          carga.repartidor?.nombre ||
-                          usuario?.nombre ||
-                          "Sin nombre"}
-                      </Text>
-                    </View>
-
-                  </View>
-
                 </View>
 
-                {/* ==============================
-                    AVISO
-                ============================== */}
+                <View style={styles.line} />
 
-                <View style={styles.avisoCard}>
+                <View style={styles.detailRow}>
+                  <View style={styles.detailIconBox}>
+                    <Text style={styles.detailIcon}>
+                      🚰
+                    </Text>
+                  </View>
 
-                  <Text style={styles.avisoIcono}>
-                    ℹ️
-                  </Text>
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>
+                      Tipo de garrafón
+                    </Text>
 
-                  <Text style={styles.avisoTexto}>
-                    Confirma la carga únicamente
-                    después de verificar físicamente
-                    la cantidad recibida.
-                  </Text>
-
+                    <Text style={styles.detailValue}>
+                      {obtenerNombreGarrafon(carga)}
+                    </Text>
+                  </View>
                 </View>
 
-                {/* ==============================
-                    BOTÓN ACEPTAR
-                ============================== */}
+                <View style={styles.detailRow}>
+                  <View style={styles.detailIconBox}>
+                    <Text style={styles.detailIcon}>
+                      📦
+                    </Text>
+                  </View>
+
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>
+                      Cantidad asignada
+                    </Text>
+
+                    <Text style={styles.quantityValue}>
+                      {carga.cantidad}{" "}
+                      {obtenerUnidad(carga)}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <View style={styles.detailIconBox}>
+                    <Text style={styles.detailIcon}>
+                      👤
+                    </Text>
+                  </View>
+
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>
+                      Repartidor asignado
+                    </Text>
+
+                    <Text style={styles.detailValue}>
+                      {carga.repartidorNombre ||
+                        carga.repartidor?.nombre ||
+                        nombreUsuario}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.notice}>
+                  <Text style={styles.noticeText}>
+                    ℹ️ Verifica físicamente los
+                    garrafones antes de confirmar
+                    la recepción.
+                  </Text>
+                </View>
 
                 <TouchableOpacity
+                  activeOpacity={0.85}
                   style={[
-                    styles.aceptarBoton,
-                    estaAceptando &&
-                      styles.botonDeshabilitado,
+                    styles.acceptButton,
+                    aceptandoId !== null &&
+                      styles.disabledButton,
                   ]}
-                  onPress={() =>
-                    aceptarCarga(carga)
-                  }
-                  disabled={estaAceptando}
-                  activeOpacity={0.8}
+                  onPress={() => aceptarCarga(carga)}
+                  disabled={aceptandoId !== null}
                 >
-
                   {estaAceptando ? (
-
                     <>
                       <ActivityIndicator
                         size="small"
-                        color="#fff"
+                        color={COLORS.white}
                       />
 
-                      <Text style={styles.aceptarTexto}>
+                      <Text style={styles.acceptText}>
                         Confirmando...
                       </Text>
                     </>
-
                   ) : (
-
-                    <Text style={styles.aceptarTexto}>
-                      ✅ Aceptar carga
+                    <Text style={styles.acceptText}>
+                      ✓ Aceptar carga
                     </Text>
-
                   )}
-
                 </TouchableOpacity>
-
               </View>
             );
           })
-
         )}
 
-        {/* ======================================
-            INFORMACIÓN DE HU-006
-        ====================================== */}
+        {/* INFORMACIÓN FINAL */}
 
-        {cargas.length > 0 && (
-          <View style={styles.pieInfo}>
+        <View style={styles.footerCard}>
+          <Text style={styles.footerTitle}>
+            💧 Antes de iniciar tu ruta
+          </Text>
 
-            <Text style={styles.pieInfoTitulo}>
-              🚚 Antes de iniciar tu ruta
-            </Text>
+          <Text style={styles.footerDescription}>
+            Confirma que la cantidad de garrafones
+            registrada coincida con la carga
+            física que recibiste en planta.
+          </Text>
+        </View>
 
-            <Text style={styles.pieInfoTexto}>
-              Verifica que la cantidad de garrafones
-              mostrada coincida con la carga física
-              recibida en planta.
-            </Text>
-
-          </View>
-        )}
-
+        <Text style={styles.footerBrand}>
+          AQUARUTA · AGUA PURIFICADA
+        </Text>
       </ScrollView>
-
     </View>
   );
 }
 
-// ==================================================
-// ESTILOS
-// ==================================================
-
 const styles = StyleSheet.create({
-
-  contenedor: {
+  container: {
     flex: 1,
-    backgroundColor: "#f5f1ea",
+    backgroundColor: COLORS.background,
   },
-
-  // ================================================
-  // HEADER
-  // ================================================
 
   header: {
-    flexDirection: "row",
-    alignItems: "center",
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 15,
-    backgroundColor: "#7a4e39",
+    paddingTop: 22,
+    paddingBottom: 48,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
   },
 
-  iconoHeaderContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  iconoHeader: {
-    fontSize: 27,
-  },
-
-  headerTexto: {
-    marginLeft: 12,
-    flex: 1,
-  },
-
-  titulo: {
-    color: "#ffffff",
-    fontSize: 23,
-    fontWeight: "700",
-  },
-
-  subtitulo: {
-    color: "#f5f1ea",
-    fontSize: 13,
-    marginTop: 2,
-  },
-
-  // ================================================
-  // BIENVENIDA
-  // ================================================
-
-  perfilCard: {
-    backgroundColor: "#ffffff",
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 18,
-    padding: 16,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-  },
-
-  perfilHeader: {
+  brandRow: {
     flexDirection: "row",
     alignItems: "center",
   },
 
-  perfilAvatarContainer: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: "#7a4e39",
+  brandIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
   },
 
-  perfilAvatarText: {
-    color: "#ffffff",
-    fontSize: 24,
-    fontWeight: "700",
+  brandEmoji: {
+    fontSize: 27,
   },
 
-  perfilInfo: {
+  brandText: {
     flex: 1,
   },
 
-  perfilNombre: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#363f37",
+  brandTitle: {
+    color: COLORS.white,
+    fontSize: 23,
+    fontWeight: "800",
+    letterSpacing: 0.3,
   },
 
-  perfilRol: {
+  brandSubtitle: {
+    color: "#D9F8FF",
+    fontSize: 11,
     marginTop: 2,
-    fontSize: 12,
-    color: "#7a4e39",
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-
-  perfilEmail: {
-    marginTop: 4,
-    fontSize: 12,
-    color: "#666666",
   },
 
   logoutButton: {
-    backgroundColor: "#f5f1ea",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginLeft: 10,
-  },
-
-  logoutButtonText: {
-    color: "#7a4e39",
-    fontWeight: "700",
-    fontSize: 11,
-  },
-
-  perfilResumen: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 18,
-    gap: 8,
-  },
-
-  resumenMiniCard: {
-    flex: 1,
-    backgroundColor: "#f8f4ec",
+    paddingHorizontal: 14,
+    paddingVertical: 9,
     borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
   },
 
-  resumenMiniNumero: {
+  logoutText: {
+    color: COLORS.white,
+    fontWeight: "700",
+    fontSize: 12,
+  },
+
+  headerBottom: {
+    marginTop: 26,
+  },
+
+  headerGreeting: {
+    color: COLORS.white,
     fontSize: 22,
-    fontWeight: "700",
-    color: "#7a4e39",
+    fontWeight: "800",
   },
 
-  resumenMiniLabel: {
-    marginTop: 3,
-    fontSize: 11,
-    color: "#666666",
-    fontWeight: "600",
-  },
-
-  bienvenida: {
-    backgroundColor: "#ffffff",
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e0d8",
-  },
-
-  bienvenidaTitulo: {
-    fontSize: 19,
-    fontWeight: "700",
-    color: "#363f37",
-  },
-
-  bienvenidaTexto: {
+  headerDescription: {
+    color: "#D9F8FF",
+    fontSize: 13,
     marginTop: 5,
-    color: "#666666",
-    fontSize: 14,
-    lineHeight: 20,
   },
 
-  // ================================================
-  // SCROLL
-  // ================================================
-
-  scrollContenido: {
-    padding: 16,
-    paddingBottom: 35,
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+    marginTop: -25,
   },
 
-  // ================================================
-  // RESUMEN
-  // ================================================
-
-  resumenCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
+  profileCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 22,
     padding: 18,
-    marginBottom: 15,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 5,
+    marginBottom: 16,
+    elevation: 4,
+    shadowColor: COLORS.deep,
+    shadowOpacity: 0.09,
+    shadowRadius: 10,
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
   },
 
-  resumenTitulo: {
-    fontSize: 16,
+  profileTop: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: COLORS.ice,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+
+  avatarText: {
+    color: COLORS.primary,
+    fontSize: 25,
+    fontWeight: "800",
+  },
+
+  profileInfo: {
+    flex: 1,
+  },
+
+  profileName: {
+    color: COLORS.deep,
+    fontSize: 17,
+    fontWeight: "800",
+  },
+
+  profileRole: {
+    color: COLORS.primary,
+    fontSize: 11,
     fontWeight: "700",
-    color: "#363f37",
-  },
-
-  resumenSubtitulo: {
+    textTransform: "uppercase",
     marginTop: 3,
-    fontSize: 12,
-    color: "#777777",
   },
 
-  contador: {
-    width: 45,
-    height: 45,
-    borderRadius: 23,
-    backgroundColor: "#7a4e39",
+  profileEmail: {
+    color: COLORS.muted,
+    fontSize: 11,
+    marginTop: 3,
+  },
+
+  activeBadge: {
+    backgroundColor: COLORS.successBg,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginLeft: 5,
+  },
+
+  activeText: {
+    color: COLORS.success,
+    fontSize: 10,
+    fontWeight: "800",
+  },
+
+  statsRow: {
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  statItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+
+  statNumber: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: COLORS.primary,
+  },
+
+  statLabel: {
+    color: COLORS.muted,
+    fontSize: 11,
+    marginTop: 4,
+  },
+
+  statDivider: {
+    height: 35,
+    width: 1,
+    backgroundColor: COLORS.border,
+  },
+
+  welcomeCard: {
+    backgroundColor: COLORS.ice,
+    borderRadius: 20,
+    padding: 17,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 23,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+
+  welcomeIcon: {
+    width: 50,
+    height: 50,
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 13,
+  },
+
+  welcomeEmoji: {
+    fontSize: 25,
+  },
+
+  welcomeContent: {
+    flex: 1,
+  },
+
+  welcomeTitle: {
+    color: COLORS.deep,
+    fontSize: 16,
+    fontWeight: "800",
+  },
+
+  welcomeDescription: {
+    color: COLORS.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 5,
+  },
+
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+
+  sectionTitle: {
+    fontSize: 21,
+    fontWeight: "800",
+    color: COLORS.deep,
+  },
+
+  sectionSubtitle: {
+    fontSize: 12,
+    color: COLORS.muted,
+    marginTop: 4,
+  },
+
+  counter: {
+    width: 43,
+    height: 43,
+    borderRadius: 15,
+    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  contadorTexto: {
-    color: "#ffffff",
-    fontSize: 19,
-    fontWeight: "700",
+  counterText: {
+    color: COLORS.white,
+    fontSize: 18,
+    fontWeight: "800",
   },
 
-  // ================================================
-  // CARGA
-  // ================================================
-
-  cargaCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 14,
+  loadCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 22,
     padding: 18,
     marginBottom: 16,
     elevation: 3,
-    shadowColor: "#000",
-    shadowOpacity: 0.09,
-    shadowRadius: 6,
+    shadowColor: COLORS.deep,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 3,
     },
   },
 
-  cargaHeader: {
+  loadHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 8,
   },
 
-  cargaTitulo: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#363f37",
-  },
-
-  cargaFecha: {
-    marginTop: 4,
-    fontSize: 12,
-    color: "#777777",
-  },
-
-  estadoPendiente: {
-    backgroundColor: "#fff3cd",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-
-  estadoPendienteTexto: {
-    color: "#856404",
-    fontSize: 10,
-    fontWeight: "700",
-  },
-
-  estadoTransito: {
-    backgroundColor: "#e8f5e9",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-
-  estadoTransitoTexto: {
-    color: "#2e7d32",
-    fontSize: 10,
-    fontWeight: "700",
-  },
-
-  separador: {
-    height: 1,
-    backgroundColor: "#eeeeee",
-    marginVertical: 15,
-  },
-
-  // ================================================
-  // DATOS
-  // ================================================
-
-  informacionCarga: {
-    gap: 14,
-  },
-
-  datoFila: {
+  loadTitleGroup: {
     flexDirection: "row",
     alignItems: "center",
-  },
-
-  datoIcono: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#f5f1ea",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  datoContenido: {
-    marginLeft: 12,
     flex: 1,
   },
 
-  datoEtiqueta: {
-    fontSize: 11,
-    color: "#888888",
-    marginBottom: 2,
-  },
-
-  datoValor: {
-    fontSize: 15,
-    color: "#363f37",
-    fontWeight: "600",
-  },
-
-  cantidadValor: {
-    fontSize: 18,
-    color: "#7a4e39",
-    fontWeight: "700",
-  },
-
-  // ================================================
-  // AVISO
-  // ================================================
-
-  avisoCard: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    backgroundColor: "#f8f4ec",
-    borderRadius: 9,
-    padding: 12,
-    marginTop: 18,
-    marginBottom: 15,
-  },
-
-  avisoIcono: {
-    fontSize: 16,
-  },
-
-  avisoTexto: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 12,
-    color: "#666666",
-    lineHeight: 18,
-  },
-
-  // ================================================
-  // BOTÓN ACEPTAR
-  // ================================================
-
-  aceptarBoton: {
-    backgroundColor: "#536d5f",
-    borderRadius: 9,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-  },
-
-  aceptarTexto: {
-    color: "#ffffff",
-    fontSize: 15,
-    fontWeight: "700",
-    marginLeft: 6,
-  },
-
-  botonDeshabilitado: {
-    opacity: 0.7,
-  },
-
-  // ================================================
-  // VACÍO
-  // ================================================
-
-  vacioCard: {
-    backgroundColor: "#ffffff",
+  loadIconBox: {
+    width: 44,
+    height: 44,
     borderRadius: 14,
-    padding: 30,
+    backgroundColor: COLORS.ice,
     alignItems: "center",
     justifyContent: "center",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.07,
-    shadowRadius: 5,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-  },
-
-  vacioIcono: {
-    fontSize: 45,
-    marginBottom: 12,
-  },
-
-  vacioTitulo: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#363f37",
-    textAlign: "center",
-  },
-
-  vacioTexto: {
-    marginTop: 8,
-    fontSize: 13,
-    color: "#777777",
-    lineHeight: 19,
-    textAlign: "center",
-  },
-
-  actualizarBoton: {
-    marginTop: 18,
-    backgroundColor: "#7a4e39",
-    borderRadius: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 11,
-  },
-
-  actualizarTexto: {
-    color: "#ffffff",
-    fontWeight: "700",
-  },
-
-  // ================================================
-  // ERROR
-  // ================================================
-
-  errorCard: {
-    margin: 16,
-    padding: 16,
-    borderRadius: 10,
-    backgroundColor: "#f8d7da",
-    borderWidth: 1,
-    borderColor: "#f5c6cb",
-    flexDirection: "row",
-  },
-
-  errorIcono: {
-    fontSize: 22,
     marginRight: 10,
   },
 
-  errorContenido: {
-    flex: 1,
+  loadIcon: {
+    fontSize: 23,
   },
 
-  errorTitulo: {
-    color: "#721c24",
-    fontSize: 15,
-    fontWeight: "700",
+  loadTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: COLORS.deep,
   },
 
-  errorTexto: {
-    color: "#721c24",
-    fontSize: 13,
+  loadDate: {
+    color: COLORS.muted,
+    fontSize: 11,
     marginTop: 4,
-    lineHeight: 18,
   },
 
-  reintentarBoton: {
-    alignSelf: "flex-start",
-    marginTop: 10,
-    backgroundColor: "#721c24",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 7,
+  statusBadge: {
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    borderRadius: 20,
   },
 
-  reintentarTexto: {
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: "700",
+  statusPending: {
+    backgroundColor: COLORS.warningBg,
   },
 
-  // ================================================
-  // CARGANDO
-  // ================================================
+  statusTransit: {
+    backgroundColor: COLORS.successBg,
+  },
 
-  cargandoContainer: {
-    flex: 1,
+  statusText: {
+    fontSize: 9,
+    fontWeight: "800",
+  },
+
+  statusPendingText: {
+    color: COLORS.warning,
+  },
+
+  statusTransitText: {
+    color: COLORS.success,
+  },
+
+  line: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 17,
+  },
+
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+
+  detailIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: COLORS.background,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#f5f1ea",
+    marginRight: 12,
   },
 
-  cargandoTexto: {
-    marginTop: 12,
-    color: "#666666",
-    fontSize: 14,
+  detailIcon: {
+    fontSize: 21,
   },
 
-  // ================================================
-  // PIE
-  // ================================================
-
-  pieInfo: {
-    marginTop: 5,
-    padding: 16,
-    borderRadius: 10,
-    backgroundColor: "#ffffff",
+  detailContent: {
+    flex: 1,
   },
 
-  pieInfoTitulo: {
-    color: "#363f37",
+  detailLabel: {
+    fontSize: 11,
+    color: COLORS.muted,
+    marginBottom: 4,
+  },
+
+  detailValue: {
+    fontSize: 15,
     fontWeight: "700",
-    fontSize: 14,
+    color: COLORS.text,
   },
 
-  pieInfoTexto: {
-    marginTop: 5,
-    color: "#777777",
+  quantityValue: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: COLORS.primary,
+  },
+
+  notice: {
+    backgroundColor: COLORS.ice,
+    padding: 13,
+    borderRadius: 13,
+    marginBottom: 15,
+  },
+
+  noticeText: {
+    color: COLORS.deep,
     fontSize: 12,
+    lineHeight: 19,
+  },
+
+  acceptButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  acceptText: {
+    color: COLORS.white,
+    fontSize: 15,
+    fontWeight: "800",
+    marginHorizontal: 5,
+  },
+
+  disabledButton: {
+    opacity: 0.5,
+  },
+
+  emptyCard: {
+    backgroundColor: COLORS.white,
+    padding: 30,
+    borderRadius: 22,
+    alignItems: "center",
+    marginBottom: 16,
+    elevation: 2,
+  },
+
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 25,
+    backgroundColor: COLORS.ice,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 18,
+  },
+
+  emptyIcon: {
+    fontSize: 39,
+  },
+
+  emptyTitle: {
+    fontSize: 19,
+    fontWeight: "800",
+    color: COLORS.deep,
+    textAlign: "center",
+  },
+
+  emptyDescription: {
+    fontSize: 13,
+    color: COLORS.muted,
+    textAlign: "center",
+    lineHeight: 21,
+    marginTop: 10,
+  },
+
+  refreshButton: {
+    marginTop: 20,
+    backgroundColor: COLORS.primary,
+    borderRadius: 13,
+    paddingHorizontal: 22,
+    paddingVertical: 13,
+  },
+
+  refreshText: {
+    color: COLORS.white,
+    fontWeight: "800",
+    fontSize: 13,
+  },
+
+  errorCard: {
+    backgroundColor: COLORS.dangerBg,
+    padding: 17,
+    borderRadius: 16,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: "#F8CCD1",
+  },
+
+  errorTitle: {
+    color: COLORS.danger,
+    fontSize: 14,
+    fontWeight: "800",
+  },
+
+  errorDescription: {
+    color: COLORS.danger,
+    fontSize: 12,
+    marginTop: 7,
     lineHeight: 18,
   },
-});
 
-export default CargasRepartidor;
+  retryButton: {
+    marginTop: 13,
+    backgroundColor: COLORS.danger,
+    paddingHorizontal: 15,
+    paddingVertical: 11,
+    borderRadius: 10,
+    alignSelf: "flex-start",
+  },
+
+  retryText: {
+    color: COLORS.white,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  footerCard: {
+    marginTop: 8,
+    backgroundColor: COLORS.white,
+    padding: 18,
+    borderRadius: 18,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.turquoise,
+  },
+
+  footerTitle: {
+    color: COLORS.deep,
+    fontSize: 14,
+    fontWeight: "800",
+  },
+
+  footerDescription: {
+    color: COLORS.muted,
+    fontSize: 12,
+    lineHeight: 19,
+    marginTop: 7,
+  },
+
+  footerBrand: {
+    color: COLORS.muted,
+    fontSize: 10,
+    textAlign: "center",
+    letterSpacing: 2,
+    marginTop: 26,
+    fontWeight: "700",
+  },
+
+  centerContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 25,
+  },
+
+  centerIcon: {
+    fontSize: 45,
+    marginBottom: 16,
+  },
+
+  centerTitle: {
+    color: COLORS.deep,
+    fontSize: 21,
+    fontWeight: "800",
+    marginTop: 16,
+    textAlign: "center",
+  },
+
+  centerDescription: {
+    color: COLORS.muted,
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: "center",
+    marginTop: 10,
+  },
+
+  loadingCircle: {
+    width: 90,
+    height: 90,
+    backgroundColor: COLORS.ice,
+    borderRadius: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+
+  loadingIcon: {
+    fontSize: 43,
+  },
+});

@@ -27,7 +27,7 @@ import colors from '../theme/colors';
 const USER = {
   since: '2023',
   orders: 24,
-  points: 340,
+  points: null,
   reviews: 7,
 };
 
@@ -78,8 +78,8 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.statLabel}>Pedidos</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{USER.points}</Text>
-          <Text style={styles.statLabel}>Puntos</Text>
+          <Text style={styles.statNumber}>{'—'}</Text>
+          <Text style={styles.statLabel}>Puntos: consultar en ventas</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>{USER.reviews}</Text>
