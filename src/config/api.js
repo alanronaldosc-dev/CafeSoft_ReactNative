@@ -1,17 +1,20 @@
 
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
+import { normalizeBackendUrl } from "./backendUrl.cjs";
 
 // ============================================
 // CONFIGURACIÓN DE LA API
 // ============================================
 
-export const BASE_URL =
-  "http://192.168.100.7:8080/api";
+export const BASE_URL = normalizeBackendUrl(
+  process.env.EXPO_PUBLIC_API_URL,
+  __DEV__
+);
 
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 30000,
+  timeout: 90000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -89,5 +92,14 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// La comprobacion publica no utiliza el cliente que adjunta el JWT.
+export async function checkBackendHealth() {
+  const response = await axios.get(`${BASE_URL}/health`, { timeout: 90000 });
+  if (response.data?.status !== "UP" || response.data?.database !== "UP") {
+    throw new Error("El servidor o la base de datos no están disponibles.");
+  }
+  return response.data;
+}
 
 export default api;

@@ -6,7 +6,11 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test": "node --test scripts/test-backend-url.cjs scripts/test-api-client.cjs",
+    "verify:android": "expo export --platform android",
+    "build:aab": "npx eas-cli@latest build --platform android --profile production",
+    "build:apk": "npx eas-cli@latest build --platform android --profile preview"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.16.2",

@@ -22,6 +22,7 @@
         "backgroundColor": "#3D1A00"
       },
       "edgeToEdgeEnabled": true,
+      "usesCleartextTraffic": true,
       "package": "com.utvt.soft",
       "versionCode": 1
     },
@@ -34,7 +35,15 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permite seleccionar una imagen de producto de tu galeria.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ],
     "web": {
       "favicon": "./assets/favicon.png"
@@ -44,6 +53,6 @@
         "projectId": "0bb697f3-80ce-46eb-8501-f588747b3fa9"
       }
     },
-    "owner": "alan_monnkey"
+    "owner": "aquasoft"
   }
 }
