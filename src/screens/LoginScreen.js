@@ -19,7 +19,7 @@ import {
 } from "react-native";
 
 import { LinearGradient } from "expo-linear-gradient";
-import api from "../config/api";
+import api, { checkBackendHealth } from "../config/api";
 import { useAuth } from "../context/AuthContext";
 
 // ============================================
@@ -230,6 +230,7 @@ export default function LoginScreen({ navigation }) {
     useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [checkingConnection, setCheckingConnection] = useState(false);
 
   // ============================================
   // OBTENER DATOS DEL USUARIO
@@ -424,6 +425,19 @@ export default function LoginScreen({ navigation }) {
 
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCheckConnection = async () => {
+    if (checkingConnection) return;
+    setCheckingConnection(true);
+    try {
+      await checkBackendHealth();
+      Alert.alert("Conexión disponible", "El servidor y su base de datos responden correctamente.");
+    } catch {
+      Alert.alert("Sin conexión", "No se pudo comprobar la conexión. Revisa tu acceso a internet e inténtalo nuevamente.");
+    } finally {
+      setCheckingConnection(false);
     }
   };
 
@@ -673,6 +687,17 @@ export default function LoginScreen({ navigation }) {
                   </>
                 )}
               </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleCheckConnection}
+              disabled={checkingConnection || loading}
+              accessibilityRole="button"
+              style={{ alignItems: "center", paddingVertical: 12 }}
+            >
+              <Text style={styles.forgotPasswordText}>
+                {checkingConnection ? "Comprobando conexión..." : "Comprobar conexión"}
+              </Text>
             </TouchableOpacity>
 
             {/* REGISTRO */}

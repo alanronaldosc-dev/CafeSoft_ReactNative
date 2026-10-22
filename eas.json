@@ -12,16 +12,29 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "environment": "preview",
+      "env": {
+        "APP_ENV": "preview"
       }
     },
     "production": {
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
+      },
+      "environment": "production",
+      "env": {
+        "APP_ENV": "production"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
   }
 }

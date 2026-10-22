@@ -56,3 +56,9 @@ yarn-error.*
 # Logs
 *.log
 logs/
+# HU-030: artefactos y credenciales locales
+credentials.json
+*.keystore
+*.aab
+*.apk
+artifacts/
