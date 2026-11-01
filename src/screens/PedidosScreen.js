@@ -140,6 +140,8 @@ export default function PedidosScreen({ route }) {
   // ============================================
 
   const [modalVisible, setModalVisible] = useState(false);
+  const [promocionesDisponibles, setPromocionesDisponibles] = useState([]);
+  const [promocionSeleccionada, setPromocionSeleccionada] = useState(null);
   const [clienteActivo, setClienteActivo] = useState(null);
   const [saldoPuntosRuta, setSaldoPuntosRuta] = useState(null);
   const [consultandoPuntos, setConsultandoPuntos] = useState(false);
@@ -842,10 +844,26 @@ const terminarRuta = () => {
     }
   };
 
+  const cargarPromocionesDisponibles = async () => {
+    try {
+      const sucursalId = usuario?.sucursalId || usuario?.sucursal?.id;
+      const url = sucursalId
+        ? `/promociones/vigentes/sucursal/${sucursalId}`
+        : `/promociones/vigentes`;
+      const { data } = await api.get(url);
+      setPromocionesDisponibles(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.warn("No se pudieron cargar promociones", error?.message);
+      setPromocionesDisponibles([]);
+    }
+  };
+
   const abrirModalVenta = (cliente) => {
     setSaldoPuntosRuta(null);
     consultarPuntosRuta(cliente?.id);
     setClienteActivo(cliente);
+    setPromocionSeleccionada(null);
+    cargarPromocionesDisponibles();
 
     setGarrafonesSeleccionados({});
     setVaciosSeleccionados({});
@@ -886,9 +904,22 @@ const terminarRuta = () => {
     precioUnitario || 0
   );
 
-  const totalVenta =
+  const totalVentaBase =
     cantidadTotalSeleccionada *
     precioNumerico;
+
+  // Aplicar descuento de promoción si está seleccionada
+  const promocionActiva =
+    promocionSeleccionada &&
+    (!promocionSeleccionada.minGarrafones ||
+      cantidadTotalSeleccionada >= promocionSeleccionada.minGarrafones);
+
+  const descuentoPromocion = promocionActiva
+    ? totalVentaBase *
+      (Number(promocionSeleccionada.descuentoPorcentaje) / 100)
+    : 0;
+
+  const totalVenta = Math.max(0, totalVentaBase - descuentoPromocion);
 
   // ============================================
   // TOTALES DEL PANEL
@@ -1062,6 +1093,14 @@ const terminarRuta = () => {
 
       observaciones:
         observaciones.trim(),
+
+      promocionId:
+        promocionSeleccionada?.id || null,
+
+      descuento:
+        promocionSeleccionada
+          ? descuentoPromocion
+          : 0,
     };
 
     try {
@@ -2330,7 +2369,71 @@ const terminarRuta = () => {
               )}
 
 
-              {/* MÉTODO */}
+                            {/* PROMOCIONES DISPONIBLES */}
+              {promocionesDisponibles.length > 0 && (
+                <View style={styles.promoSection}>
+                  <Text style={styles.modalLabel}>
+                    Promociones disponibles
+                  </Text>
+                  {promocionesDisponibles.map((promo) => {
+                    const totalGarrafones = cantidadTotalSeleccionada;
+                    const cumpleMin = !promo.minGarrafones || totalGarrafones >= promo.minGarrafones;
+                    const descuento = cumpleMin
+                      ? totalVenta * (Number(promo.descuentoPorcentaje) / 100)
+                      : 0;
+                    const ahorro = descuento;
+                    const seleccionada = promocionSeleccionada?.id === promo.id;
+                    return (
+                      <TouchableOpacity
+                        key={promo.id}
+                        style={[
+                          styles.promoCard,
+                          seleccionada && styles.promoCardActiva,
+                          !cumpleMin && styles.promoCardDisabled,
+                        ]}
+                        onPress={() => {
+                          if (!cumpleMin) return;
+                          setPromocionSeleccionada(seleccionada ? null : promo);
+                        }}
+                        disabled={!cumpleMin}
+                      >
+                        <Text style={styles.promoNombre}>{promo.nombre}</Text>
+                        <Text style={styles.promoFechas}>
+                          {promo.fechaInicio ? new Date(promo.fechaInicio).toLocaleDateString() : ""}
+                          {" - "}
+                          {promo.fechaFin ? new Date(promo.fechaFin).toLocaleDateString() : ""}
+                        </Text>
+                        {promo.descripcion ? (
+                          <Text style={styles.promoDesc}>{promo.descripcion}</Text>
+                        ) : null}
+                        <Text style={styles.promoDetalle}>
+                          {promo.minGarrafones > 0
+                            ? "Min. " + promo.minGarrafones + " garrafones - "
+                            : ""}
+                          {promo.descuentoPorcentaje}% descuento
+                        </Text>
+                        {cumpleMin && descuento > 0 && (
+                          <Text style={styles.promoAhorro}>
+                            Ahorro: ${ahorro.toFixed(2)} (vs compra normal)
+                          </Text>
+                        )}
+                        {!cumpleMin && (
+                          <Text style={styles.promoNoCumple}>
+                            Requiere min. {promo.minGarrafones} garrafones
+                          </Text>
+                        )}
+                        {seleccionada && (
+                          <Text style={styles.promoSeleccionada}>
+                            Promocion aplicada
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+
+{/* MÉTODO */}
 
               <Text
                 style={
@@ -2434,24 +2537,40 @@ const terminarRuta = () => {
                   styles.totalBox
                 }
               >
-                <Text
-                  style={
-                    styles.totalLabel
-                  }
-                >
-                  Total estimado
-                </Text>
+                {promocionActiva && descuentoPromocion > 0 && (
+                  <View style={{ marginBottom: 8, width: '100%' }}>
+                    <Text style={{ fontSize: 12, color: '#94a3b8' }}>
+                      Subtotal: ${totalVentaBase.toFixed(2)}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: '#22c55e' }}>
+                      Descuento promo: -${descuentoPromocion.toFixed(2)}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: '#22c55e', fontWeight: 'bold' }}>
+                      Ahorro: ${descuentoPromocion.toFixed(2)} vs compra normal
+                    </Text>
+                  </View>
+                )}
 
-                <Text
-                  style={
-                    styles.totalValue
-                  }
-                >
-                  $
-                  {Number(
-                    totalVenta
-                  ).toFixed(2)}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <Text
+                    style={
+                      styles.totalLabel
+                    }
+                  >
+                    Total estimado
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.totalValue
+                    }
+                  >
+                    $
+                    {Number(
+                      totalVenta
+                    ).toFixed(2)}
+                  </Text>
+                </View>
               </View>
 
               {/* OBSERVACIONES */}
@@ -3277,11 +3396,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 14,
 
-    flexDirection: "row",
+    flexDirection: "column",
 
-    alignItems: "center",
-    justifyContent:
-      "space-between",
+    alignItems: "stretch",
   },
 
   totalLabel: {
@@ -3351,4 +3468,16 @@ const styles = StyleSheet.create({
   },
 
   
+  promoSection: { marginTop: 12, marginBottom: 8 },
+  promoCard: { borderWidth: 1, borderColor: '#334155', borderRadius: 8, padding: 10, marginBottom: 8, backgroundColor: '#1e293b' },
+  promoCardActiva: { borderColor: '#22c55e', backgroundColor: '#0f2e1f' },
+  promoCardDisabled: { opacity: 0.5 },
+  promoNombre: { fontWeight: 'bold', color: '#e2e8f0', fontSize: 14 },
+  promoFechas: { fontSize: 11, color: '#94a3b8', marginTop: 2 },
+  promoDesc: { fontSize: 12, color: '#cbd5e1', marginTop: 2 },
+  promoDetalle: { fontSize: 12, color: '#94a3b8', marginTop: 4 },
+  promoAhorro: { fontSize: 12, color: '#22c55e', fontWeight: 'bold', marginTop: 2 },
+  promoNoCumple: { fontSize: 11, color: '#f59e0b', marginTop: 2 },
+  promoSeleccionada: { fontSize: 12, color: '#22c55e', fontWeight: 'bold', marginTop: 4 },
+
 });
