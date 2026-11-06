@@ -25,6 +25,9 @@ jobs:
       - name: Instalar dependencias
         run: npm install
 
+      - name: Ejecutar tests (Jest)
+        run: npm test
+
       - name: Validar build (Expo prebuild)
         run: npx expo prebuild --platform android --no-install
 
