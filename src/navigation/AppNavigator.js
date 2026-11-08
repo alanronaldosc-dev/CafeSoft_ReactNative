@@ -1,5 +1,7 @@
-import React from 'react';
-
+import React, { useEffect } from 'react';
+import * as Notifications from 'expo-notifications';
+import { navigationRef, navegarDesdeNotificacion } from './navigationRef';
+import { registrarToken, escucharNotificaciones } from '../services/NotificationService';
 import {
   NavigationContainer,
 } from '@react-navigation/native';
@@ -249,12 +251,66 @@ export default function AppNavigator() {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
-const esRepartidor =
-  rolActual.includes('repart');
+
+  useEffect(() => {
+    if (!usuario?.id) return;
+
+    registrarToken(usuario.id).then((resultado) => {
+      if (resultado.ok) {
+        // Útil como evidencia en la práctica y para probar el envío.
+        console.log('Expo push token:', resultado.token);
+      } else {
+        console.warn('Push no registrado:', resultado.motivo);
+      }
+    });
+
+    // Si la app se abrió desde una notificación antes de iniciar
+    // sesión, la respuesta sigue pendiente y se procesa aquí.
+    const respuestaPendiente =
+      Notifications.getLastNotificationResponse();
+
+    if (respuestaPendiente) {
+      navegarDesdeNotificacion(
+        respuestaPendiente.notification.request.content.data
+      );
+
+      Notifications.clearLastNotificationResponse();
+    }
+
+    return escucharNotificaciones({
+      onRecibida: (notificacion) => {
+        const { title, body, data } = notificacion.request.content;
+        console.log('Notificación recibida:', { title, body, data });
+      },
+      onAbierta: (respuesta) => {
+        const data = respuesta.notification.request.content.data;
+        console.log('Notificación abierta:', data);
+        navegarDesdeNotificacion(data);
+      },
+    });
+  }, [usuario?.id]);
+
+
+  const esRepartidor =
+    rolActual.includes('repart');
 
   return (
 
-    <NavigationContainer>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={() => {
+        const respuesta =
+          Notifications.getLastNotificationResponse();
+
+        if (respuesta && usuario) {
+          navegarDesdeNotificacion(
+            respuesta.notification.request.content.data
+          );
+
+          Notifications.clearLastNotificationResponse();
+        }
+      }}
+    >
 
     <Stack.Navigator
   key={
