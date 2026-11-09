@@ -8,6 +8,7 @@ import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, ScrollView, Alert, ActivityIndicator, Image,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import colors from '../theme/colors';
 import ProductoService from '../services/ProductoService';
@@ -16,6 +17,7 @@ import InventarioService from '../services/InventarioService';
 const UNIDADES = ['litros', 'kilogramos', 'piezas'];
 
 export default function ProductoFormScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
   const productoEdit = route.params?.producto || null;
   const isEditing = productoEdit !== null;
 
@@ -144,7 +146,7 @@ export default function ProductoFormScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backButton}>←</Text>
         </TouchableOpacity>

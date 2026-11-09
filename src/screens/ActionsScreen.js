@@ -6,10 +6,16 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import colors from '../theme/colors';
+import Reveal from '../components/ui/Reveal';
+import { radius, shadow, spacing } from '../theme/metrics';
 
 export default function ActionsScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
+
   return (
     <View style={styles.container}>
 
@@ -17,15 +23,28 @@ export default function ActionsScreen({ navigation }) {
           ENCABEZADO
       ============================================ */}
 
-      <View style={styles.header}>
+      <LinearGradient
+        colors={['#043A4C', '#07556B', '#008FB5']}
+        style={[styles.header, { paddingTop: insets.top + 16 }]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <Text style={styles.headerEyebrow}>CAFESOFT · OPERACIÓN</Text>
         <Text style={styles.headerTitle}>Acciones</Text>
-      </View>
+        <Text style={styles.headerSub}>
+          Gestiona inventario, catálogo y entregas desde un solo lugar.
+        </Text>
+      </LinearGradient>
 
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingBottom: spacing.huge + insets.bottom },
+        ]}
         showsVerticalScrollIndicator={false}
       >
-
+        <Reveal index={0}>
+          <View>
         <Text style={styles.sectionTitle}>
           Gestión de Inventario
         </Text>
@@ -367,6 +386,8 @@ export default function ActionsScreen({ navigation }) {
 
         </View>
 
+          </View>
+        </Reveal>
       </ScrollView>
     </View>
   );
@@ -389,15 +410,31 @@ const styles = StyleSheet.create({
 
   header: {
     backgroundColor: colors.primary,
-    paddingTop: 55,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
+    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+
+  headerEyebrow: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    marginBottom: 6,
   },
 
   headerTitle: {
     color: colors.textLight,
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+  },
+
+  headerSub: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 13,
+    marginTop: 4,
   },
 
   // ================================================
@@ -405,8 +442,8 @@ const styles = StyleSheet.create({
   // ================================================
 
   scroll: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: spacing.xl,
+    paddingTop: spacing.xxl,
   },
 
   // ================================================
@@ -430,9 +467,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    ...shadow.card,
   },
 
   cardHeader: {
@@ -449,8 +487,8 @@ const styles = StyleSheet.create({
   cardIconContainer: {
     width: 48,
     height: 48,
-    backgroundColor: colors.surfaceAlt,  
-    borderRadius: 24,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -506,10 +544,10 @@ const styles = StyleSheet.create({
   huInfo: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
+    backgroundColor: colors.background,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.md,
   },
 
   huInfoIcon: {

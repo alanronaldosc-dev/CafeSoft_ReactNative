@@ -6,10 +6,12 @@ import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, ScrollView, Alert, ActivityIndicator, Switch,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '../theme/colors';
 import CategoriaService from '../services/CategoriaService';
 
 export default function CategoriaFormScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
   const categoriaEdit = route.params?.categoria || null;
   const isEditing = categoriaEdit !== null;
 
@@ -46,7 +48,7 @@ export default function CategoriaFormScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backButton}>←</Text>
         </TouchableOpacity>

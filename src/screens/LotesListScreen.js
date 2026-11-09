@@ -13,10 +13,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '../theme/colors';
+import Reveal from '../components/ui/Reveal';
 import LoteService from '../services/LoteService';
 
 export default function LotesListScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [lotes, setLotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -63,7 +66,8 @@ export default function LotesListScreen({ navigation }) {
     );
   };
 
-  const renderItem = ({ item }) => (
+  const renderItem = ({ item, index }) => (
+    <Reveal index={Math.min(index, 8)}>
     <View style={styles.item}>
       {/* Fila: ID + Nombre insumo */}
       <View style={styles.itemHeader}>
@@ -109,13 +113,14 @@ export default function LotesListScreen({ navigation }) {
         </Text>
       </View>
     </View>
+    </Reveal>
   );
 
   return (
     <View style={styles.container}>
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backButton}>←</Text>
         </TouchableOpacity>

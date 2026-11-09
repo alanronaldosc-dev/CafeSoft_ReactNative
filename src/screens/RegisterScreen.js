@@ -42,7 +42,7 @@ export default function RegisterScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#3D1A00', '#6B3A1F', '#3D1A00']}
+        colors={['#043A4C', '#07556B', '#043A4C']}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -173,7 +173,7 @@ export default function RegisterScreen({ navigation }) {
           {/* HU-011: botón que dispara el registro del nuevo perfil */}
           <TouchableOpacity onPress={handleRegister} activeOpacity={0.85} style={styles.buttonWrapper}>
             <LinearGradient
-              colors={[colors.secondary, '#A0522D', colors.primary]}
+              colors={[colors.secondary, colors.primary, '#07556B']}
               style={styles.registerButton}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -202,12 +202,12 @@ const styles = StyleSheet.create({
   gradient: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   decorCircle: { position: 'absolute', borderRadius: 999, opacity: 0.15 },
   decorCircle1: { width: 250, height: 250, backgroundColor: colors.secondary, top: -60, right: -60 },
-  decorCircle2: { width: 180, height: 180, backgroundColor: '#C8763A', top: 80, left: -50 },
+  decorCircle2: { width: 180, height: 180, backgroundColor: colors.secondary, top: 80, left: -50 },
   scroll: { flexGrow: 1, paddingBottom: 40 },
   illustrationSection: { alignItems: 'center', paddingTop: 60, paddingBottom: 24, position: 'relative' },
   illustrationMain: {
     width: 90, height: 90, borderRadius: 28,
-    backgroundColor: 'rgba(200, 118, 58, 0.3)',
+    backgroundColor: 'rgba(41, 201, 212, 0.3)',
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: 'rgba(200, 118, 58, 0.5)',
     marginBottom: 14,

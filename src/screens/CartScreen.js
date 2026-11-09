@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '../theme/colors';
 import { useCart } from '../context/CartContext';
 import ProductoService from '../services/ProductoService';
@@ -17,6 +18,7 @@ const USUARIO_ID = 1;
 import api from '../config/api';
 
 export default function CartScreen() {
+  const insets = useSafeAreaInsets();
   const { cartItems, addToCart, removeFromCart, deleteFromCart, totalItems, totalPrice } = useCart();
 
   const [view, setView] = useState('catalog');
@@ -116,7 +118,7 @@ export default function CartScreen() {
     return (
       <View style={styles.container}>
         <LinearGradient colors={['#0F1B2D', '#0073BB']}
- style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+ style={[styles.header, { paddingTop: insets.top + 12 }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
           <View style={[styles.headerCircle, styles.headerCircle1]} />
           <Text style={styles.headerTitle}>Ticket de Venta</Text>
           <View style={{ width: 24 }} />
@@ -188,7 +190,7 @@ export default function CartScreen() {
     return (
       <View style={styles.container}>
         <LinearGradient colors={['#0F1B2D', '#0073BB']}
- style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+ style={[styles.header, { paddingTop: insets.top + 12 }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
           <View style={[styles.headerCircle, styles.headerCircle1]} />
           <TouchableOpacity onPress={() => setView('catalog')}>
             <Text style={styles.backButton}>←</Text>
@@ -320,7 +322,7 @@ export default function CartScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#0F1B2D', '#0073BB']}
- style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+ style={[styles.header, { paddingTop: insets.top + 12 }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
         <View style={[styles.headerCircle, styles.headerCircle1]} />
         <Text style={styles.headerTitle}>Catálogo</Text>
         <TouchableOpacity style={styles.cartIconContainer} onPress={() => setView('cart')}>

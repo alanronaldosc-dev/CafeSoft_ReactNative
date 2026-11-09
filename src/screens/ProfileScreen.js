@@ -21,8 +21,10 @@ import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import colors from '../theme/colors';
+import { radius, shadow, spacing } from '../theme/metrics';
 
 const USER = {
   since: '2023',
@@ -35,6 +37,7 @@ const TEXT_SIZES = ['Pequeño', 'Mediano', 'Grande'];
 
 export default function ProfileScreen({ navigation }) {
   const { usuario, cerrarSesion } = useAuth();
+  const insets = useSafeAreaInsets();
   const [highContrast, setHighContrast] = useState(false);
   const [textSize, setTextSize] = useState('Mediano');
   const [accessibilityOpen, setAccessibilityOpen] = useState(false);
@@ -48,10 +51,15 @@ export default function ProfileScreen({ navigation }) {
 };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
       {/* HU-011: header con los datos básicos del perfil activo (nombre y rol) */}
-      <LinearGradient colors={['#3D1A00', '#6B3A1F']} style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+      <LinearGradient
+        colors={['#043A4C', '#07556B', '#008FB5']}
+        style={[styles.header, { paddingTop: insets.top + 24 }]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
         <View style={[styles.headerCircle, styles.headerCircle1]} />
         <View style={[styles.headerCircle, styles.headerCircle2]} />
         <View style={styles.avatarContainer}>
@@ -208,12 +216,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    paddingBottom: 30,
+    paddingBottom: spacing.huge,
   },
   header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingTop: 55, paddingBottom: 24, paddingHorizontal: 20, gap: 16,
+    paddingBottom: spacing.xxl, paddingHorizontal: spacing.xl, gap: spacing.lg,
     overflow: 'hidden', position: 'relative',
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
   headerCircle: { position: 'absolute', borderRadius: 999, opacity: 0.1 },
   headerCircle1: { width: 220, height: 220, backgroundColor: colors.secondary, top: -70, right: -50 },
@@ -268,35 +278,42 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    backgroundColor: colors.primary,
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-    gap: 10,
+    paddingHorizontal: spacing.lg,
+    marginTop: -spacing.xl,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
   statCard: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow.card,
   },
   statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.textLight,
+    fontSize: 19,
+    fontWeight: '800',
+    color: colors.primary,
   },
   statLabel: {
-    fontSize: 12,
-    color: colors.textLight,
-    opacity: 0.8,
+    fontSize: 11,
+    color: colors.textSecondary,
     marginTop: 2,
+    textAlign: 'center',
   },
   section: {
     backgroundColor: colors.white,
-    borderRadius: 16,
-    marginHorizontal: 16,
-    marginTop: 16,
+    borderRadius: radius.lg,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow.card,
   },
   menuItem: {
     flexDirection: 'row',
@@ -384,11 +401,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   logoutButton: {
-    marginHorizontal: 16,
-    marginTop: 24,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.xxl,
     backgroundColor: colors.surface,
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderRadius: radius.md,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
   },
   logoutText: {

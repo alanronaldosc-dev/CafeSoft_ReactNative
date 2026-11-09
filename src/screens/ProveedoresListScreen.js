@@ -9,11 +9,14 @@ import {
   ActivityIndicator,
 } from "react-native";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { BASE_URL } from "../config/api";
 
 
 export default function ProveedoresListScreen({ navigation }) {
 
+  const insets = useSafeAreaInsets();
   const [proveedores, setProveedores] = useState([]);
   const [cargando, setCargando] = useState(true);
 
@@ -267,7 +270,7 @@ export default function ProveedoresListScreen({ navigation }) {
 
     <View style={styles.container}>
 
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
 
         <View>
 
