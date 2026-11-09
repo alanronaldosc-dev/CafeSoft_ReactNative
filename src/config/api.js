@@ -1,8 +1,11 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-export const BASE_URL =
-  'http://192.168.100.3:8080/api';
+const configuredBaseUrl = process.env.EXPO_PUBLIC_API_URL;
+
+export const BASE_URL = (
+  configuredBaseUrl || 'http://192.168.100.3:8080/api'
+).replace(/\/+$/, '');
 
 const api = axios.create({
   baseURL: BASE_URL,

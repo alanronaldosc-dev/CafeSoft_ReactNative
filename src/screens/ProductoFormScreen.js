@@ -87,12 +87,13 @@ export default function ProductoFormScreen({ route, navigation }) {
 
   const handleAddInsumo = () => {
     if (!selectedInventario) { Alert.alert('Error', 'Seleccioná un insumo del inventario'); return; }
-    if (!cantidadInsumo || parseFloat(cantidadInsumo) <= 0) { Alert.alert('Error', 'La cantidad debe ser mayor a 0'); return; }
+    const cantidad = Number(cantidadInsumo.trim());
+    if (!Number.isFinite(cantidad) || cantidad < 0.001) { Alert.alert('Error', 'La cantidad debe ser un número igual o mayor a 0.001'); return; }
     if (insumosAgregados.find(i => i.insumoId === selectedInventario.id)) { Alert.alert('Error', 'Este insumo ya fue agregado'); return; }
     setInsumosAgregados(prev => [...prev, {
       insumoId: selectedInventario.id,
       insumoNombre: selectedInventario.nombre,
-      cantidad: cantidadInsumo,
+      cantidad: String(cantidad),
       unidadMedida: unidadInsumo,
     }]);
     setSelectedInventario(null);
@@ -106,8 +107,21 @@ export default function ProductoFormScreen({ route, navigation }) {
 
   const validate = () => {
     if (!nombre.trim()) { Alert.alert('Error', 'El nombre es obligatorio'); return false; }
-    if (!precio || isNaN(parseFloat(precio)) || parseFloat(precio) < 0) {
-      Alert.alert('Error', 'El precio debe ser un número válido'); return false;
+    if (nombre.trim().length > 100) {
+      Alert.alert('Error', 'El nombre no puede exceder los 100 caracteres'); return false;
+    }
+    const precioNumerico = Number(precio.trim());
+    if (!precio.trim() || !Number.isFinite(precioNumerico) || precioNumerico < 0) {
+      Alert.alert('Error', 'El precio debe ser un número válido y no negativo'); return false;
+    }
+    if (descripcion.trim().length > 500) {
+      Alert.alert('Error', 'La descripción no puede exceder los 500 caracteres'); return false;
+    }
+    if (insumosAgregados.some(item => {
+      const cantidad = Number(item.cantidad);
+      return !Number.isFinite(cantidad) || cantidad < 0.001;
+    })) {
+      Alert.alert('Error', 'Cada insumo debe tener una cantidad numérica igual o mayor a 0.001'); return false;
     }
     return true;
   };
@@ -116,12 +130,12 @@ export default function ProductoFormScreen({ route, navigation }) {
     if (!validate()) return;
     const data = {
       nombre: nombre.trim(),
-      precio: parseFloat(precio),
+      precio: Number(precio.trim()),
       descripcion: descripcion.trim() || null,
       imagen: imagen || null,  // base64 o null si no se seleccionó
       insumos: insumosAgregados.map(i => ({
         insumoId: i.insumoId,
-        cantidad: parseFloat(i.cantidad),
+        cantidad: Number(i.cantidad),
         unidadMedida: i.unidadMedida,
       })),
     };

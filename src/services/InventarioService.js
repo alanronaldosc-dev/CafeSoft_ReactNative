@@ -1,61 +1,39 @@
-// InventarioService.js
-// Comunicación con /api/inventario
-// El inventario es la fuente de insumos disponibles para los productos
-
-import { BASE_URL } from '../config/api';
-
-const headers = {
-  'Content-Type': 'application/json',
-  'Accept': 'application/json',
-};
+import api from '../config/api';
+import { requestApi } from './apiRequest';
 
 const InventarioService = {
+  getAll: () =>
+    requestApi(async () => {
+      const response = await api.get('/inventario');
+      if (!Array.isArray(response.data)) {
+        throw new Error('La API devolvió una lista de inventario inválida.');
+      }
+      return response.data;
+    }, 'No se pudo consultar el inventario.'),
 
-  // GET /api/inventario
-  getAll: async () => {
-    const response = await fetch(`${BASE_URL}/inventario`, { headers });
-    if (!response.ok) throw new Error('Error al obtener inventario');
-    return response.json();
-  },
+  getById: (id) =>
+    requestApi(
+      async () => (await api.get(`/inventario/${id}`)).data,
+      'No se encontró el registro de inventario.'
+    ),
 
-  // GET /api/inventario/:id
-  getById: async (id) => {
-    const response = await fetch(`${BASE_URL}/inventario/${id}`, { headers });
-    if (!response.ok) throw new Error('Registro no encontrado');
-    return response.json();
-  },
+  create: (data) =>
+    requestApi(
+      async () => (await api.post('/inventario', data)).data,
+      'No se pudo registrar el elemento de inventario.'
+    ),
 
-  // POST /api/inventario
-  create: async (data) => {
-    const response = await fetch(`${BASE_URL}/inventario`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Error al crear registro');
-    return response.json();
-  },
+  update: (id, data) =>
+    requestApi(
+      async () => (await api.put(`/inventario/${id}`, data)).data,
+      'No se pudo actualizar el elemento de inventario.'
+    ),
 
-  // PUT /api/inventario/:id
-  update: async (id, data) => {
-    const response = await fetch(`${BASE_URL}/inventario/${id}`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Error al actualizar registro');
-    return response.json();
-  },
-
-  // DELETE /api/inventario/:id
-  delete: async (id) => {
-    const response = await fetch(`${BASE_URL}/inventario/${id}`, {
-      method: 'DELETE',
-      headers,
-    });
-    if (!response.ok) throw new Error('Error al eliminar registro');
-    return true;
-  },
+  delete: (id) =>
+    requestApi(async () => {
+      await api.delete(`/inventario/${id}`);
+      return true;
+    }, 'No se pudo eliminar el elemento de inventario.'),
 };
 
 export default InventarioService;

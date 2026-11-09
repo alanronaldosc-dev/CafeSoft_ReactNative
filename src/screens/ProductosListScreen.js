@@ -35,7 +35,7 @@ export default function ProductosListScreen({ navigation }) {
       const data = await ProductoService.getAll();
       setProductos(data);
     } catch (e) {
-      setError('No se pudo conectar con el servidor');
+      setError(e.message || 'No se pudieron consultar los productos.');
     } finally {
       setLoading(false);
     }
