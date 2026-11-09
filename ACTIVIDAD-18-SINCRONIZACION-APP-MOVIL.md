@@ -142,7 +142,7 @@ simuladas.
   credenciales ni detalles internos de la API.
 - **Autenticación real:** `POST /api/usuarios/login` valida las credenciales y
   devuelve un JWT. La app lo guarda con `expo-secure-store` y el interceptor de
-  Axios lo envía como `Authorization: Bearer …` en las solicitudes posteriores.
+  Axios lo adjunta en el encabezado de autorización como token Bearer.
 - **Autorización en el servidor:** la configuración Spring Security requiere
   autenticación para `/api/**` salvo rutas públicas explícitas. La lectura del
   catálogo requiere JWT válido. Crear, modificar y eliminar productos requiere
@@ -150,8 +150,6 @@ simuladas.
 - **Pruebas de roles:** se añadieron pruebas MockMvc que permiten leer el
   catálogo a `CLIENT` autenticado, deniegan a `CLIENT` las operaciones
   `POST`/`PUT`/`DELETE` y verifican acceso de escritura para `USER`.
-- **Errores:** la app traduce fallos de red y respuestas HTTP a mensajes
-  sencillos, sin presentar tokens ni detalles internos de la API.
 - **HTTPS:** no se encontró un endpoint HTTPS disponible para este entorno. La
   URL de desarrollo usa HTTP; para una red pública o despliegue debe publicarse
   la API detrás de TLS y configurar la URL `https://…`. No enviar credenciales
