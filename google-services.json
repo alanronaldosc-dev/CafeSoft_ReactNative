@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "965802686587",
+    "project_id": "aquasoft-e0a41",
+    "storage_bucket": "aquasoft-e0a41.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:965802686587:android:040d87041ba5a1ae3d4ade",
+        "android_client_info": {
+          "package_name": "com.utvt.soft"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBedhkVDYVEosghmcmreA0QO-L-c38Od9o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

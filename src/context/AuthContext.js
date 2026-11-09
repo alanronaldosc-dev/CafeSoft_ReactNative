@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { eliminarToken } from '../services/NotificationService';
 
 import {
   createContext,
@@ -24,6 +25,7 @@ export function AuthProvider({ children }) {
   const temporizadorSesion = useRef(null);
   const expiracionSesion = useRef(null);
   const appState = useRef(AppState.currentState);
+  const usuarioRef = useRef(null);
 
   // ============================================
   // LIMPIAR TEMPORIZADOR
@@ -44,6 +46,12 @@ export function AuthProvider({ children }) {
     limpiarTemporizador();
 
     expiracionSesion.current = null;
+
+    if (usuarioRef.current?.id) {
+      await eliminarToken(usuarioRef.current.id);
+    }
+
+    usuarioRef.current = null;
 
     await SecureStore.deleteItemAsync('jwt_token');
 
@@ -95,6 +103,8 @@ export function AuthProvider({ children }) {
       );
     }
 
+    usuarioRef.current = usuarioData;
+
     setUsuario(usuarioData);
 
     expiracionSesion.current =
@@ -108,14 +118,16 @@ export function AuthProvider({ children }) {
   // ============================================
 
   const cerrarSesion = async () => {
+    const idUsuario = usuarioRef.current?.id ?? usuario?.id;
+
+    if (idUsuario) {
+      await eliminarToken(idUsuario);
+    }
+
+    usuarioRef.current = null;
     limpiarTemporizador();
-
     expiracionSesion.current = null;
-
-    await SecureStore.deleteItemAsync(
-      'jwt_token'
-    );
-
+    await SecureStore.deleteItemAsync('jwt_token');
     setUsuario(null);
   };
 
