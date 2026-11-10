@@ -98,23 +98,85 @@ equivalentes antes de enviar la solicitud.
 7. Si la solicitud falla, la app presenta un mensaje de error; el listado
    ofrece una acción para reintentar la consulta.
 
-## 5. Capturas o demostración
+```mermaid
+sequenceDiagram
+    actor Usuario
+    participant App as CafeSoft móvil
+    participant API as API CafeSoft
+    participant DB as Base de datos remota
 
-La evidencia de compilación sí se obtuvo. Las capturas de consulta, alta y
-verificación remota requieren levantar la API y repetir la prueba desde la app;
-no se sustituyen por imágenes mock.
+    Usuario->>App: Ingresa correo y contraseña
+    App->>API: POST /api/usuarios/login
+    API-->>App: Usuario y JWT
+    Note over App: JWT guardado en SecureStore
+    Usuario->>App: Abre Productos
+    App->>API: GET /api/productos con JWT de sesión
+    API->>DB: Consultar productos
+    DB-->>API: Productos
+    API-->>App: 200 + lista de productos
+    Usuario->>App: Captura producto y guarda
+    Note over App: Validación local
+    App->>API: POST /api/productos con JWT de sesión
+    API->>API: Valida JWT, rol y datos
+    API->>DB: Guardar producto
+    DB-->>API: Producto registrado
+    API-->>App: 201 + producto
+    App-->>Usuario: Mensaje de éxito
+    App->>API: GET /api/productos al volver al listado
+    API-->>App: Lista actualizada
+```
 
-1. **Consulta remota:** capturar el listado después de que carga desde
-   `GET /api/productos`.
-2. **Registro:** capturar el formulario de prueba y el mensaje de éxito después
-   del `POST`.
-3. **Verificación remota:** capturar el listado recargado y el producto creado.
-4. **Validación/error:** capturar el rechazo al dejar vacío el nombre o usar
-   precio inválido, o bien el mensaje de error y botón de reintento con la API
-   desconectada.
+## 5. Capturas y demostración
 
-La app debe ejecutarse contra el backend real para las capturas 1–3. Ocultar
-correos, tokens, contraseñas y otros datos personales antes de compartirlas.
+La demostración está delimitada y preparada para ejecutarse con la aplicación
+y la API reales. La compilación de los bundles se verificó, pero durante esta
+validación la API no aceptó conexiones en `192.168.100.3:8080` ni en
+`localhost:8080`. Por ello, no se obtuvieron capturas reales de una consulta o
+un alta remotas. Se incluyen cuatro **maquetas ilustrativas con datos
+ficticios**, identificadas dentro de cada imagen como simulación. No son
+capturas de la aplicación en ejecución, no demuestran una respuesta del
+servidor y no deben presentarse como prueba de persistencia remota.
+
+| Evidencia | Qué debe mostrar la captura real | Nombre sugerido | Estado |
+|---|---|---|---|
+| Consulta | Pantalla **Acciones → Productos** con productos recibidos de `GET /api/productos`. | `evidencia-01-consulta-productos.png` | Captura real pendiente; [maqueta ilustrativa](./evidence/actividad-18-simulacion/evidencia-01-consulta-simulada.png). |
+| Registro | Formulario con datos de prueba y confirmación de éxito del `POST /api/productos`. | `evidencia-02-registro-producto.png` | Captura real pendiente; [maqueta ilustrativa](./evidence/actividad-18-simulacion/evidencia-02-registro-simulado.png). |
+| Sincronización | Listado abierto de nuevo con el producto recién creado recibido desde el servidor. | `evidencia-03-producto-sincronizado.png` | Captura real pendiente; [maqueta ilustrativa](./evidence/actividad-18-simulacion/evidencia-03-sincronizacion-simulada.png). |
+| Validación o error | Mensaje al enviar datos inválidos o al fallar la conexión, sin credenciales visibles. | `evidencia-04-validacion-o-error.png` | Captura real pendiente; [maqueta ilustrativa](./evidence/actividad-18-simulacion/evidencia-04-error-simulado.png). |
+
+### Maquetas visuales (no son evidencia de ejecución)
+
+Las imágenes siguientes se pueden usar para explicar visualmente el flujo en
+la presentación. No sustituyen las capturas reales que faltan ni cambian los
+resultados pendientes de la matriz de pruebas.
+
+<p align="center">
+  <img src="./evidence/actividad-18-simulacion/evidencia-01-consulta-simulada.png" alt="Maqueta simulada de consulta de productos" width="240">
+  <img src="./evidence/actividad-18-simulacion/evidencia-02-registro-simulado.png" alt="Maqueta simulada del formulario de registro" width="240">
+</p>
+<p align="center">
+  <img src="./evidence/actividad-18-simulacion/evidencia-03-sincronizacion-simulada.png" alt="Maqueta simulada del listado después del registro" width="240">
+  <img src="./evidence/actividad-18-simulacion/evidencia-04-error-simulado.png" alt="Maqueta simulada del error de conexión" width="240">
+</p>
+
+### Guion para obtener las evidencias
+
+1. Inicia el backend y configura `EXPO_PUBLIC_API_URL` con una dirección
+   alcanzable desde el teléfono. Inicia Expo y entra con una cuenta de prueba
+   autorizada (`ADMIN` o `USER` para registrar).
+2. Abre **Acciones → Productos**. Espera la respuesta del servidor y toma la
+   evidencia 1.
+3. Pulsa **+ Crear Nuevo Producto**, registra un producto ficticio con nombre y
+   precio válidos y guarda. Confirma el mensaje de éxito y toma la evidencia 2.
+4. Vuelve al listado, que consulta los datos al recuperar el foco. Confirma que
+   el producto creado aparece y toma la evidencia 3.
+5. Deja vacío el nombre o ingresa un precio inválido para mostrar la validación
+   local. Alternativamente, desconecta la API y pulsa **Reintentar** en el
+   listado para mostrar el error de conexión. Toma la evidencia 4.
+
+Las evidencias 1–3 deben corresponder al backend real de pruebas. No ejecutar
+altas en producción. Oculta correos, tokens, contraseñas, direcciones privadas
+y otros datos personales antes de entregar las capturas.
 
 ## 6. Matriz de pruebas
 
@@ -128,11 +190,12 @@ correos, tokens, contraseñas y otros datos personales antes de compartirlas.
 | 6 | Build Expo para web y bundle Android | Bundles terminan sin errores. | **Aprobada:** `npx expo export --platform web --max-workers 1` y `npx expo export --platform android --max-workers 1` terminaron y exportaron `dist`. Android requirió limitar workers por memoria. |
 | 7 | Expo dependency check | Dependencias compatibles con SDK instalado. | **Aviso:** Expo CLI detecta `expo@54.0.34` y recomienda `~54.0.37`; el bundle sí compiló. No se actualizaron dependencias en esta actividad. |
 | 8 | Autorización de operaciones de producto | Lectura autenticada; escrituras solo para personal autorizado. | **Aprobada en pruebas MockMvc:** 7 pruebas de `SecurityConfigTest`, incluidas lectura por `CLIENT`, denegación de `POST`/`PUT`/`DELETE` a `CLIENT` y escritura permitida a `USER`. |
-| 9 | Traducción de errores API en la app | Mensajes controlados para problemas de red y respuestas HTTP. | **Aprobada:** 7 aserciones Node verificaron éxito, desconexión, `400`, `401`, `403`, `404` y `5xx` sin exponer el cuerpo de error del servidor. |
 
 Las pruebas 1–5 no se marcan como aprobadas en runtime hasta ejecutarlas con el
-backend activo y accesible desde el dispositivo. No se generaron capturas
-simuladas.
+backend activo y accesible desde el dispositivo. Las pruebas de build y de
+autorización verifican aspectos técnicos, pero no sustituyen la comprobación
+remota desde el teléfono. Se incluyen maquetas simuladas claramente
+identificadas; no se obtuvieron capturas reales de la API.
 
 ## 7. Medidas de seguridad y limitaciones
 
@@ -179,8 +242,10 @@ simuladas.
 
 - [x] Proyecto móvil actualizado y código fuente en el repositorio.
 - [x] Identificación del servicio remoto y sus endpoints.
+- [x] Flujo de consulta, registro y actualización descrito y guion de
+      demostración incluido.
 - [ ] Capturas reales de consulta, registro y verificación posterior (pendientes
-      por indisponibilidad de la API durante la validación).
+      porque la API no estuvo disponible durante la validación).
 - [x] Matriz de pruebas con los resultados observados y pendientes claramente
       diferenciados.
 - [x] Descripción de las medidas de seguridad y sus limitaciones actuales.
@@ -206,4 +271,7 @@ simuladas.
    productos requieren JWT. Indica que el despliegue externo debe usar HTTPS.
 
 No ejecutar el alta en producción. Las capturas deben ser de una sesión real
-contra un backend de pruebas y no deben incluir información sensible.
+contra un backend de pruebas y no deben incluir información sensible. Para
+cerrar la evidencia visual de la actividad, faltan únicamente las capturas
+reales indicadas en la sección 5, que dependen de que la API esté encendida y
+sea accesible desde el teléfono.
