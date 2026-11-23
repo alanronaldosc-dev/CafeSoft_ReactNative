@@ -13,10 +13,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '../theme/colors';
+import Reveal from '../components/ui/Reveal';
 import InsumoService from '../services/InsumoService';
 
 export default function InsumosListScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [insumos, setInsumos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -67,7 +70,8 @@ export default function InsumosListScreen({ navigation }) {
   };
 
   // Cada fila de la lista
-  const renderItem = ({ item }) => (
+  const renderItem = ({ item, index }) => (
+    <Reveal index={Math.min(index, 8)}>
     <View style={styles.item}>
       <View style={styles.itemInfo}>
         <Text style={styles.itemName}>{item.nombre}</Text>
@@ -95,13 +99,14 @@ export default function InsumosListScreen({ navigation }) {
         </TouchableOpacity>
       </View>
     </View>
+    </Reveal>
   );
 
   return (
     <View style={styles.container}>
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backButton}>←</Text>
         </TouchableOpacity>

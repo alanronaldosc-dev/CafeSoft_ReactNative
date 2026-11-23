@@ -6,11 +6,11 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#3D1A00"
+      "backgroundColor": "#043A4C"
     },
     "ios": {
       "supportsTablet": true,
@@ -19,7 +19,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#3D1A00"
+        "backgroundColor": "#043A4C"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.utvt.soft",
@@ -29,7 +29,7 @@
       [
         "expo-notifications",
         {
-          "color": "#3D1A00",
+          "color": "#008FB5",
           "defaultChannel": "pedidos"
         }
       ],

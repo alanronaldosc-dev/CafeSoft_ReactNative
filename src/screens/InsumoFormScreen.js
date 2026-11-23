@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '../theme/colors';
 import InsumoService from '../services/InsumoService';
 import ProveedorService from '../services/ProveedorService';
@@ -16,6 +17,7 @@ import ProveedorService from '../services/ProveedorService';
 const UNIDADES = ['litros', 'kilogramos', 'piezas'];
 
 export default function InsumoFormScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
   const insumoEdit = route.params?.insumo || null;
   const isEditing = insumoEdit !== null;
 
@@ -102,7 +104,7 @@ export default function InsumoFormScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backButton}>‹</Text>
         </TouchableOpacity>

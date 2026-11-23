@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
-  View, Text, ScrollView,
-  TouchableOpacity, StyleSheet,
+  View, Text, ScrollView, StyleSheet, Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '../theme/colors';
 import { useCart } from '../context/CartContext';
+import { AnimatedPressable, Reveal, SectionHeader } from '../components/ui';
+import { radius, shadow, spacing, typography } from '../theme/metrics';
 
 const FEATURED = [
   { id: '1', name: 'Espresso Clásico', price: 45, emoji: '☕' },
@@ -19,140 +21,191 @@ const NEWS = [
   { id: '3', title: 'Horario extendido', desc: 'Ahora abrimos hasta las 22hs', emoji: '🕙' },
 ];
 
-export default function HomeScreen() {
+const STATS = [
+  { num: '+500', label: 'Clientes' },
+  { num: '15+', label: 'Productos' },
+  { num: '4.9★', label: 'Valoración' },
+];
+
+export default function HomeScreen({ navigation }) {
   const { addToCart, totalItems } = useCart();
+  const insets = useSafeAreaInsets();
+
+  const orbDrift = useRef(new Animated.Value(0)).current;
+  const badgeScale = useRef(new Animated.Value(totalItems > 0 ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(orbDrift, { toValue: 1, duration: 9000, useNativeDriver: true }),
+        Animated.timing(orbDrift, { toValue: 0, duration: 9000, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  useEffect(() => {
+    Animated.spring(badgeScale, {
+      toValue: totalItems > 0 ? 1 : 0,
+      useNativeDriver: true,
+      speed: 20,
+      bounciness: 6,
+    }).start();
+  }, [totalItems]);
+
+  const orbStyle = {
+    transform: [
+      { translateY: orbDrift.interpolate({ inputRange: [0, 1], outputRange: [0, -12] }) },
+      { translateX: orbDrift.interpolate({ inputRange: [0, 1], outputRange: [0, 8] }) },
+    ],
+    opacity: orbDrift.interpolate({ inputRange: [0, 1], outputRange: [0.12, 0.17] }),
+  };
+
+  const badgeStyle = {
+    transform: [{ scale: badgeScale }],
+  };
 
   return (
     <View style={styles.container}>
-
-      {/* Header con gradiente */}
       <LinearGradient
-        colors={['#0F1B2D', '#0073BB']}
-        style={styles.header}
+        colors={['#043A4C', '#07556B', '#008FB5']}
+        style={[styles.header, { paddingTop: insets.top + 18 }]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        {/* Círculos decorativos en el header */}
-        <View style={[styles.headerCircle, styles.headerCircle1]} />
-        <View style={[styles.headerCircle, styles.headerCircle2]} />
+        <Animated.View style={[styles.orb, styles.orbLarge, orbStyle]} />
+        <Animated.View style={[styles.orb, styles.orbSmall, orbStyle]} />
 
         <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.headerGreeting}>Buenos días ☀️</Text>
+          <View style={styles.headerText}>
+            <Text style={styles.headerGreeting}>Hola de nuevo</Text>
             <Text style={styles.headerTitle}>CafeSoft</Text>
+            <Text style={styles.headerSub}>Tu agua y café, sin esperas</Text>
           </View>
-          <View style={styles.cartBadgeContainer}>
-            <View style={styles.cartButton}>
-              <Text style={styles.cartIcon}>🛒</Text>
-            </View>
+
+          <AnimatedPressable
+            onPress={() => navigation?.navigate('Cart')}
+            accessibilityRole="button"
+            accessibilityLabel={`Abrir carrito, ${totalItems} artículos`}
+            style={styles.cartButton}
+            contentStyle={styles.pressFill}
+            scaleTo={0.92}
+          >
+            <Text style={styles.cartIcon}>🛒</Text>
             {totalItems > 0 && (
-              <View style={styles.badge}>
+              <Animated.View style={[styles.badge, badgeStyle]}>
                 <Text style={styles.badgeText}>{totalItems}</Text>
-              </View>
+              </Animated.View>
             )}
-          </View>
+          </AnimatedPressable>
         </View>
       </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingBottom: spacing.huge + insets.bottom },
+        ]}
+      >
+        <Reveal index={0}>
+          <LinearGradient
+            colors={[colors.primary, colors.secondary]}
+            style={styles.banner}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.bannerCircle} />
+            <View style={styles.bannerText}>
+              <Text style={styles.bannerKicker}>ENTREGA DEL DÍA</Text>
+              <Text style={styles.bannerTitle}>
+                Tu pedido favorito,{'\n'}donde quieras
+              </Text>
+              <Text style={styles.bannerSub}>
+                Pedí desde la app y retirá sin esperas
+              </Text>
+            </View>
+            <Text style={styles.bannerEmoji}>💧</Text>
+          </LinearGradient>
+        </Reveal>
 
-        {/* Banner principal */}
-        <LinearGradient
-          colors={[colors.primary, colors.secondary]}
-          style={styles.banner}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          <View style={styles.bannerCircle} />
-          <Text style={styles.bannerEmoji}>☕</Text>
-          <View style={styles.bannerText}>
-            <Text style={styles.bannerTitle}>Tu café favorito,{'\n'}donde quieras</Text>
-            <Text style={styles.bannerSub}>Pedí desde la app y retirá sin esperas</Text>
+        <Reveal index={1}>
+          <View style={styles.statsRow}>
+            {STATS.map((stat) => (
+              <View key={stat.label} style={styles.statCard}>
+                <Text style={styles.statNumber}>{stat.num}</Text>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+              </View>
+            ))}
           </View>
-        </LinearGradient>
+        </Reveal>
 
-        {/* Estadísticas */}
-        <View style={styles.statsRow}>
-          {[
-            { num: '+500', label: 'Clientes' },
-            { num: '15+', label: 'Productos' },
-            { num: '4.9⭐', label: 'Valoración' },
-          ].map((stat, i) => (
-            <View key={i} style={styles.statCard}>
-              <Text style={styles.statNumber}>{stat.num}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-            </View>
-          ))}
-        </View>
+        <Reveal index={2}>
+          <SectionHeader title="Destacados del día" />
+        </Reveal>
 
-        {/* Destacados */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Destacados del día</Text>
-          <View style={styles.sectionDot} />
-        </View>
+        {FEATURED.map((product, index) => (
+          <Reveal key={product.id} index={3 + index}>
+            <View style={styles.featuredCard}>
+              <View style={styles.featuredEmojiContainer}>
+                <Text style={styles.featuredEmoji}>{product.emoji}</Text>
+              </View>
 
-        {FEATURED.map(product => (
-          <View key={product.id} style={styles.featuredCard}>
-            <LinearGradient
-              colors={['rgba(61,26,0,0.08)', 'rgba(61,26,0,0.02)']}
-              style={styles.featuredEmojiContainer}
-            >
-              <Text style={styles.featuredEmoji}>{product.emoji}</Text>
-            </LinearGradient>
-            <View style={styles.featuredInfo}>
-              <Text style={styles.featuredName}>{product.name}</Text>
-              <Text style={styles.featuredPrice}>${product.price} MXN</Text>
-            </View>
-            <TouchableOpacity
-              onPress={() => addToCart({ ...product, price: product.price })}
-              style={styles.addButtonWrapper}
-            >
-              <LinearGradient
-                colors={[colors.secondary, colors.primary]}
-                style={styles.addButton}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+              <View style={styles.featuredInfo}>
+                <Text style={styles.featuredName}>{product.name}</Text>
+                <Text style={styles.featuredPrice}>
+                  ${product.price} MXN
+                </Text>
+              </View>
+
+              <AnimatedPressable
+                onPress={() => addToCart({ ...product, price: product.price })}
+                accessibilityRole="button"
+                accessibilityLabel={`Agregar ${product.name} al carrito`}
+                style={styles.addButtonWrapper}
+                contentStyle={styles.pressFill}
+                scaleTo={0.9}
               >
-                <Text style={styles.addButtonText}>+</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        ))}
-
-        {/* Novedades */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Novedades</Text>
-          <View style={styles.sectionDot} />
-        </View>
-
-        {NEWS.map(item => (
-          <View key={item.id} style={styles.newsCard}>
-            <LinearGradient
-              colors={[colors.secondary + '30', colors.primary + '10']}
-              style={styles.newsIconContainer}
-            >
-              <Text style={styles.newsEmoji}>{item.emoji}</Text>
-            </LinearGradient>
-            <View style={styles.newsInfo}>
-              <Text style={styles.newsTitle}>{item.title}</Text>
-              <Text style={styles.newsDesc}>{item.desc}</Text>
+                <LinearGradient
+                  colors={[colors.secondary, colors.primary]}
+                  style={styles.addButton}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.addButtonText}>+</Text>
+                </LinearGradient>
+              </AnimatedPressable>
             </View>
-            <Text style={styles.newsArrow}>›</Text>
-          </View>
+          </Reveal>
         ))}
 
-        {/* Info de contacto */}
-        <LinearGradient
-          colors={[colors.surface, colors.background]}
-          style={styles.infoCard}
-        >
-          <Text style={styles.infoTitle}>📍 Encontranos</Text>
-          <Text style={styles.infoText}>Av. Principal 123, Centro</Text>
-          <Text style={styles.infoText}>🕐 Lun–Vie: 7:00 – 22:00</Text>
-          <Text style={styles.infoText}>🕐 Sáb–Dom: 8:00 – 22:00</Text>
-          <Text style={styles.infoText}>📞 +52 000 000 0000</Text>
-        </LinearGradient>
+        <Reveal index={6}>
+          <SectionHeader title="Novedades" />
+        </Reveal>
 
+        {NEWS.map((item, index) => (
+          <Reveal key={item.id} index={7 + index}>
+            <View style={styles.newsCard}>
+              <View style={styles.newsIconContainer}>
+                <Text style={styles.newsEmoji}>{item.emoji}</Text>
+              </View>
+              <View style={styles.newsInfo}>
+                <Text style={styles.newsTitle}>{item.title}</Text>
+                <Text style={styles.newsDesc}>{item.desc}</Text>
+              </View>
+              <Text style={styles.newsArrow}>›</Text>
+            </View>
+          </Reveal>
+        ))}
+
+        <Reveal index={10}>
+          <View style={styles.infoCard}>
+            <Text style={styles.infoTitle}>Encontranos</Text>
+            <Text style={styles.infoText}>Av. Principal 123, Centro</Text>
+            <Text style={styles.infoText}>Lun–Vie: 7:00 – 22:00</Text>
+            <Text style={styles.infoText}>Sáb–Dom: 8:00 – 22:00</Text>
+            <Text style={styles.infoText}>+52 000 000 0000</Text>
+          </View>
+        </Reveal>
       </ScrollView>
     </View>
   );
@@ -161,103 +214,233 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
-    paddingTop: 55, paddingBottom: 24,
-    paddingHorizontal: 20,
+    paddingBottom: spacing.xxl,
+    paddingHorizontal: spacing.xl,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
     overflow: 'hidden',
     position: 'relative',
   },
-  headerCircle: { position: 'absolute', borderRadius: 999, opacity: 0.1 },
-  headerCircle1: { width: 200, height: 200, backgroundColor: colors.secondary, top: -60, right: -40 },
-  headerCircle2: { width: 120, height: 120, backgroundColor: '#fff', top: 20, left: -30 },
-  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerGreeting: { color: 'rgba(255,255,255,0.75)', fontSize: 13 },
-  headerTitle: { color: colors.textLight, fontSize: 26, fontWeight: 'bold', letterSpacing: 1 },
-  cartBadgeContainer: { position: 'relative' },
-  cartButton: {
-    width: 44, height: 44,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 22,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
-  },
-  cartIcon: { fontSize: 22 },
-  badge: {
-    position: 'absolute', top: -4, right: -4,
+  orb: {
+    position: 'absolute',
+    borderRadius: radius.pill,
     backgroundColor: colors.secondary,
-    borderRadius: 10, minWidth: 20, height: 20,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: colors.background,
   },
-  badgeText: { color: colors.white, fontSize: 11, fontWeight: 'bold' },
-  scroll: { padding: 20, paddingBottom: 40 },
+  orbLarge: { width: 220, height: 220, top: -80, right: -50 },
+  orbSmall: { width: 120, height: 120, top: 40, left: -30 },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: spacing.lg,
+  },
+  headerText: { flex: 1 },
+  headerGreeting: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  headerTitle: {
+    ...typography.display,
+    color: colors.white,
+    marginTop: 2,
+  },
+  headerSub: {
+    color: 'rgba(255,255,255,0.78)',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  cartButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartIcon: { fontSize: 21 },
+  pressFill: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: colors.secondary,
+    borderRadius: 10,
+    minWidth: 21,
+    height: 21,
+    paddingHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#07556B',
+  },
+  badgeText: { color: colors.white, fontSize: 11, fontWeight: '800' },
+  scroll: { padding: spacing.xl, paddingTop: spacing.xxl },
   banner: {
-    borderRadius: 24, padding: 20,
-    flexDirection: 'row', alignItems: 'center',
-    marginBottom: 20, gap: 16, overflow: 'hidden',
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+    gap: spacing.lg,
+    overflow: 'hidden',
     position: 'relative',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3, shadowRadius: 12, elevation: 6,
+    ...shadow.raised,
   },
   bannerCircle: {
-    position: 'absolute', width: 150, height: 150,
-    borderRadius: 75, backgroundColor: 'rgba(255,255,255,0.06)',
-    right: -30, top: -30,
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    right: -40,
+    top: -50,
   },
-  bannerEmoji: { fontSize: 50 },
   bannerText: { flex: 1 },
-  bannerTitle: { color: colors.textLight, fontSize: 17, fontWeight: 'bold', lineHeight: 24, marginBottom: 6 },
-  bannerSub: { color: 'rgba(255,255,255,0.75)', fontSize: 13 },
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
-  statCard: {
-    flex: 1, backgroundColor: colors.surface, borderRadius: 16,
-    padding: 14, alignItems: 'center',
-    borderWidth: 1, borderColor: colors.border,
+  bannerKicker: {
+    ...typography.caption,
+    color: 'rgba(255,255,255,0.7)',
+    marginBottom: spacing.xs,
   },
-  statNumber: { fontSize: 18, fontWeight: 'bold', color: colors.secondary },
-  statLabel: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.secondary },
-  sectionDot: { flex: 1, height: 2, backgroundColor: colors.border, borderRadius: 2 },
+  bannerTitle: {
+    color: colors.white,
+    fontSize: 19,
+    fontWeight: '800',
+    lineHeight: 25,
+    marginBottom: spacing.xs,
+    letterSpacing: -0.2,
+  },
+  bannerSub: { color: 'rgba(255,255,255,0.8)', fontSize: 12.5 },
+  bannerEmoji: { fontSize: 46 },
+
+  statsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.xxl,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  statNumber: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.primary,
+    letterSpacing: -0.3,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 3,
+    fontWeight: '600',
+  },
+
   featuredCard: {
-    backgroundColor: colors.surface, borderRadius: 18,
-    padding: 14, flexDirection: 'row',
-    alignItems: 'center', marginBottom: 10, gap: 12,
-    borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow.card,
   },
   featuredEmojiContainer: {
-    width: 56, height: 56, borderRadius: 18,
-    alignItems: 'center', justifyContent: 'center',
+    width: 56,
+    height: 56,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceAlt,
   },
-  featuredEmoji: { fontSize: 30 },
+  featuredEmoji: { fontSize: 28 },
   featuredInfo: { flex: 1 },
-  featuredName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  featuredPrice: { fontSize: 14, color: colors.secondary, marginTop: 2, fontWeight: '600' },
-  addButtonWrapper: {
-    borderRadius: 14,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3, shadowRadius: 6, elevation: 4,
+  featuredName: {
+    ...typography.subheading,
+    color: colors.textPrimary,
   },
-  addButton: { width: 36, height: 36, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  addButtonText: { color: colors.white, fontSize: 22, fontWeight: 'bold', lineHeight: 26 },
+  featuredPrice: {
+    fontSize: 13.5,
+    color: colors.primary,
+    marginTop: 3,
+    fontWeight: '700',
+  },
+  addButtonWrapper: { borderRadius: radius.md },
+  addButton: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addButtonText: {
+    color: colors.white,
+    fontSize: 23,
+    fontWeight: '700',
+    lineHeight: 26,
+  },
+
   newsCard: {
-    backgroundColor: colors.surface, borderRadius: 18,
-    padding: 14, flexDirection: 'row',
-    alignItems: 'center', marginBottom: 10, gap: 12,
-    borderWidth: 1, borderColor: colors.border,
-  },
-  newsIconContainer: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  newsEmoji: { fontSize: 24 },
-  newsInfo: { flex: 1 },
-  newsTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
-  newsDesc: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
-  newsArrow: { fontSize: 24, color: colors.textSecondary },
-  infoCard: {
-    borderRadius: 20, padding: 18, marginTop: 8, gap: 6,
     backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  infoTitle: { fontSize: 15, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 6 },
-  infoText: { fontSize: 14, color: colors.textSecondary },
+  newsIconContainer: {
+    width: 46,
+    height: 46,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+  newsEmoji: { fontSize: 22 },
+  newsInfo: { flex: 1 },
+  newsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  newsDesc: {
+    fontSize: 12.5,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  newsArrow: { fontSize: 24, color: colors.textMuted },
+
+  infoCard: {
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginTop: spacing.sm,
+    gap: 6,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  infoTitle: {
+    ...typography.subheading,
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  infoText: { fontSize: 13.5, color: colors.textSecondary },
 });

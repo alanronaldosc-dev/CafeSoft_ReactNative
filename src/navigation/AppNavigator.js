@@ -16,7 +16,10 @@ import {
 
 import {
   Text,
+  View,
 } from 'react-native';
+
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ============================================
 // CONTEXTO DE AUTENTICACIÓN
@@ -111,7 +114,28 @@ const Tab =
 // TABS PRINCIPALES
 // ============================================
 
+function TabIcon({ emoji, focused, color }) {
+  return (
+    <View
+      style={{
+        width: 38,
+        height: 30,
+        borderRadius: 15,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: focused
+          ? 'rgba(41, 201, 212, 0.16)'
+          : 'transparent',
+      }}
+    >
+      <Text style={{ color, fontSize: 19 }}>{emoji}</Text>
+    </View>
+  );
+}
+
 function MainTabs() {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 8);
 
   return (
 
@@ -120,15 +144,41 @@ function MainTabs() {
       screenOptions={{
 
         tabBarActiveTintColor:
-          colors.secondary,
+          colors.primary,
 
         tabBarInactiveTintColor:
-          colors.textSecondary,
+          colors.textMuted,
 
         tabBarStyle: {
           backgroundColor:
             colors.white,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          height: 58 + bottomInset,
+          paddingTop: 6,
+          paddingBottom: bottomInset,
+          shadowColor: '#043A4C',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.06,
+          shadowRadius: 12,
+          elevation: 12,
         },
+
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+          letterSpacing: 0.2,
+        },
+
+        tabBarItemStyle: {
+          paddingVertical: 2,
+        },
+
+        tabBarHideOnKeyboard: true,
+
+        // Cambiar de pestaña no es una transición jerárquica:
+        // sin deslizamiento, sin animación.
+        animation: 'none',
 
         headerShown: false,
 
@@ -144,16 +194,8 @@ function MainTabs() {
             'Inicio',
 
           tabBarIcon:
-            ({ color }) => (
-
-              <Text
-                style={{
-                  color,
-                  fontSize: 20,
-                }}
-              >
-                🏠
-              </Text>
+            ({ color, focused }) => (
+              <TabIcon emoji="🏠" focused={focused} color={color} />
             ),
         }}
       />
@@ -167,16 +209,8 @@ function MainTabs() {
             'Carrito',
 
           tabBarIcon:
-            ({ color }) => (
-
-              <Text
-                style={{
-                  color,
-                  fontSize: 20,
-                }}
-              >
-                🛒
-              </Text>
+            ({ color, focused }) => (
+              <TabIcon emoji="🛒" focused={focused} color={color} />
             ),
         }}
       />
@@ -190,16 +224,8 @@ function MainTabs() {
             'Acciones',
 
           tabBarIcon:
-            ({ color }) => (
-
-              <Text
-                style={{
-                  color,
-                  fontSize: 20,
-                }}
-              >
-                ⚙️
-              </Text>
+            ({ color, focused }) => (
+              <TabIcon emoji="⚙️" focused={focused} color={color} />
             ),
         }}
       />
@@ -213,16 +239,8 @@ function MainTabs() {
             'Perfil',
 
           tabBarIcon:
-            ({ color }) => (
-
-              <Text
-                style={{
-                  color,
-                  fontSize: 20,
-                }}
-              >
-                👤
-              </Text>
+            ({ color, focused }) => (
+              <TabIcon emoji="👤" focused={focused} color={color} />
             ),
         }}
       />
@@ -329,6 +347,12 @@ export default function AppNavigator() {
   }
   screenOptions={{
     headerShown: false,
+    animation: 'slide_from_right',
+    contentStyle: { backgroundColor: colors.background },
+    headerStyle: { backgroundColor: colors.primary },
+    headerTintColor: colors.white,
+    headerTitleStyle: { fontWeight: '700' },
+    headerShadowVisible: false,
   }}
 >
 
