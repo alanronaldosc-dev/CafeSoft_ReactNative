@@ -39,6 +39,7 @@ import { useFocusEffect } from "@react-navigation/native";
 
 import colors from "../theme/colors";
 import api from "../config/api";
+import RecomendacionesCliente from "../components/RecomendacionesCliente";
 import { useAuth } from "../context/AuthContext";
 
 // ============================================
@@ -2127,6 +2128,7 @@ const terminarRuta = () => {
                     }
                   </Text>
 
+                  <RecomendacionesCliente clienteId={clienteActivo.id} />
                   <View style={styles.puntosRutaCard}>
                     <Text style={styles.puntosRutaTitulo}>💧 CLUB AGUA · PUNTOS</Text>
                     <Text style={styles.puntosRutaSaldo}>
