@@ -1,3 +1,4 @@
+
 name: CI – Móvil React Native
 
 on:
@@ -23,10 +24,15 @@ jobs:
           node-version: '20'
 
       - name: Instalar dependencias
-        run: npm install
+        run: npm ci
 
-      - name: Ejecutar tests (Jest)
-        run: npm test
+      - name: Ejecutar tests (Jest) con cobertura
+        run: npm test -- --runInBand --coverage
+
+      - name: Verificar reporte de cobertura
+        run: |
+          test -s coverage/lcov.info
+          ls -lh coverage/lcov.info
 
       - name: Validar build (Expo prebuild)
         run: npx expo prebuild --platform android --no-install
@@ -41,4 +47,6 @@ jobs:
             -Dsonar.projectKey=alanronaldosc-dev_CafeSoft_ReactNative
             -Dsonar.organization=alanronaldosc-dev
             -Dsonar.sources=src
-            -Dsonar.exclusions=**/node_modules/**,**/android/**,**/ios/**
+            -Dsonar.tests=src/__tests__
+            -Dsonar.exclusions=**/node_modules/**,**/android/**,**/ios/**,**/__tests__/**
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
